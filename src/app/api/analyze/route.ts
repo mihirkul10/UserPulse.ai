@@ -113,6 +113,13 @@ function calculateRankScore(item: RawItem): number {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for required environment variables
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured. Please check environment variables.' },
+        { status: 500 }
+      );
+    }
     const body = await request.json();
     const { items, input, meContext } = RequestSchema.parse(body);
     

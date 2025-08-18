@@ -129,8 +129,17 @@ export default function Home() {
         setConsoleOpen(false);
       }, 2000);
     } catch (error) {
-      addLog('System', `Analysis failed: ${error}`, 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      addLog('System', `Analysis failed: ${errorMessage}`, 'error');
       console.error('Analysis failed:', error);
+      
+      // Show user-friendly error message
+      if (errorMessage.includes('not configured') || errorMessage.includes('environment')) {
+        alert('Configuration Error: The application is not properly configured. Please ensure all API keys are set in the environment variables.');
+      } else {
+        alert(`Analysis failed: ${errorMessage}\n\nPlease try again or check the console for more details.`);
+      }
+      
       setState('setup');
     }
   };

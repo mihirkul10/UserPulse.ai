@@ -163,6 +163,20 @@ async function searchRedditForCompetitor(
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for required environment variables
+    if (!process.env.REDDIT_CLIENT_ID || !process.env.REDDIT_CLIENT_SECRET || 
+        !process.env.REDDIT_USERNAME || !process.env.REDDIT_PASSWORD) {
+      return NextResponse.json(
+        { error: 'Reddit API credentials not configured. Please check environment variables.' },
+        { status: 500 }
+      );
+    }
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured. Please check environment variables.' },
+        { status: 500 }
+      );
+    }
     const body = await request.json();
     const input = RequestSchema.parse(body);
     

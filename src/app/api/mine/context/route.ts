@@ -12,6 +12,14 @@ const ProductProfileSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for required environment variables
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: 'OpenAI API key not configured. Please check environment variables.' },
+        { status: 500 }
+      );
+    }
+
     const body = await request.json();
     const product = ProductProfileSchema.parse(body);
 
