@@ -36,6 +36,7 @@ Product: ${productName}`;
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
+    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -45,9 +46,17 @@ Product: ${productName}`;
   try {
     const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    
+    // Check if content looks like JSON
+    if (!cleanContent.startsWith('[') && !cleanContent.startsWith('{')) {
+      console.error('OpenAI returned non-JSON response:', cleanContent.substring(0, 100));
+      return [productName];
+    }
+    
     return JSON.parse(cleanContent);
   } catch (error) {
     console.error('Failed to parse entity resolution response:', error);
+    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
     return [productName];
   }
 }
@@ -75,6 +84,7 @@ CRITICAL: Return ONLY a JSON array of indices. No explanations. Example: [0,1,2,
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
+    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -84,10 +94,18 @@ CRITICAL: Return ONLY a JSON array of indices. No explanations. Example: [0,1,2,
   try {
     const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    
+    // Check if content looks like JSON
+    if (!cleanContent.startsWith('[')) {
+      console.error('OpenAI returned non-JSON response for relevance filter:', cleanContent.substring(0, 100));
+      return items; // Include all items if parsing fails
+    }
+    
     const indices = JSON.parse(cleanContent);
     return indices.map((i: number) => items[i]).filter(Boolean);
   } catch (error) {
     console.error('Failed to parse relevance filter response:', error);
+    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
     // If parsing fails, include all items to be safe
     return items;
   }
@@ -112,6 +130,7 @@ CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
+    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -121,6 +140,13 @@ CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "
   try {
     const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
+    
+    // Check if content looks like JSON
+    if (!cleanContent.startsWith('[')) {
+      console.error('OpenAI returned non-JSON response for aspect classification:', cleanContent.substring(0, 100));
+      return items.map(item => ({ ...item, aspect: 'love' as const }));
+    }
+    
     const classifications = JSON.parse(cleanContent);
     
     return items.map((item, i) => ({
@@ -129,6 +155,7 @@ CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "
     }));
   } catch (error) {
     console.error('Failed to parse aspect classification response:', error);
+    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
     return items.map(item => ({ ...item, aspect: 'love' as const }));
   }
 }
@@ -376,7 +403,7 @@ export async function writeReportV2(
 
   const completion = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-4o",
-
+    temperature: 0.1,
     messages: [
       { role: "system", content: sys },
       { role: "user", content: clarity },
@@ -436,6 +463,7 @@ Product: ${product.name}`;
     
     const response = await ai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o',
+      temperature: 0.1,
       messages: [
         { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
         { role: 'user', content: prompt }
@@ -448,8 +476,17 @@ Product: ${product.name}`;
     console.log('Raw response content:', content.substring(0, 200) + '...');
     
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    const result = JSON.parse(cleanContent);
     
+    // Check if content looks like JSON
+    if (!cleanContent.startsWith('{')) {
+      console.error('OpenAI returned non-JSON response for product context:', cleanContent.substring(0, 100));
+      return {
+        contextText: `${product.name} is a software product.`,
+        keywords: [product.name]
+      };
+    }
+    
+    const result = JSON.parse(cleanContent);
     console.log('Successfully parsed product context');
     return result;
   } catch (error) {
