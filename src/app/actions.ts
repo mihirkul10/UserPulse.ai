@@ -83,11 +83,19 @@ export async function runAnalysisWithStreaming(
     onLog(`[Writer] 📝 Generating comprehensive competitive intelligence report with insights and recommendations...`);
     
     const allItems = [...mineMe, ...mineCompetitors];
-    const result = await streamCall('/api/analyze', {
-      items: allItems,
-      input,
-      meContext,
-    }, onLog) as AnalysisResult;
+
+    // Try server analysis first; if it fails, synthesize a local report so we never crash
+    let result: AnalysisResult | null = null;
+    try {
+      result = await streamCall('/api/analyze', {
+        items: allItems,
+        input,
+        meContext,
+      }, onLog) as AnalysisResult;
+    } catch (serverErr) {
+      onLog(`[Writer] ⚠️ Server analysis failed. Falling back to local heuristic report.`);
+      result = buildLocalFallbackReport(allItems, input, meContext, onLog);
+    }
     
     // Step 7: CSV (100%)
     onProgress({ percentage: 100, taskIndex: 6 });
@@ -99,6 +107,119 @@ export async function runAnalysisWithStreaming(
     onLog(`[System] ❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     throw error;
   }
+}
+
+// ------------------
+// Local fallback report generator (client-side) to guarantee output
+// ------------------
+function buildLocalFallbackReport(
+  items: RawItem[],
+  input: AnalyzeInput,
+  _meContext: ContextPack,
+  onLog: LogCallback
+): AnalysisResult {
+  const coverage: CoverageMeta = {
+    days: input.days,
+    totalThreads: items.filter(i => i.type === 'post').length,
+    totalComments: items.filter(i => i.type === 'comment').length,
+    totalItemsUsed: items.length,
+    subredditsUsed: new Set(items.map(i => i.subreddit)).size,
+  };
+
+  const md = generateHeuristicMarkdown(items, input, coverage);
+
+  const report: ReportSections = {
+    header: '# **Competitive Intelligence Report**\n\n',
+    launches: '',
+    loving: '',
+    notLoving: '',
+    strategicRead: '',
+    takeaways: '',
+    appendixCsv: buildCsv(items),
+    raw: md,
+  };
+
+  onLog(`[Writer] ✅ Generated local fallback report with ${items.length} items across ${coverage.subredditsUsed} subreddits.`);
+  return { report, coverage };
+}
+
+function generateHeuristicMarkdown(items: RawItem[], input: AnalyzeInput, coverage: CoverageMeta): string {
+  const byCompetitor: Record<string, RawItem[]> = {};
+  for (const it of items.slice(0, 250)) {
+    const key = it.matchedCompetitor || 'Unknown';
+    (byCompetitor[key] ||= []).push(it);
+  }
+
+  const posRx = /(love|awesome|great|fast|amazing|improve|like|good|easy|works|best)/i;
+  const negRx = /(bug|crash|slow|issue|problem|expensive|pricey|hate|bad|hard|doesn\'t|broken|error|downtime)/i;
+  const updRx = /(launch|release|update|version|v\d|beta|ga|announc)/i;
+
+  const sectionForProduct = (name: string, arr: RawItem[]) => {
+    const updates = arr.filter(a => updRx.test(a.title_or_text)).slice(0, 3);
+    const loves = arr.filter(a => posRx.test(a.title_or_text)).slice(0, 4);
+    const notLoves = arr.filter(a => negRx.test(a.title_or_text)).slice(0, 4);
+
+    const list = (xs: RawItem[]) => xs.map(x => `• ${truncate(x.title_or_text, 140)}\n  [ref](${x.thread_url})`).join('\n');
+
+    return [
+      `### **${name}**`,
+      ``,
+      `#### **🚀 New Updates**`,
+      updates.length ? list(updates) : '• No major launches mentioned in this window.',
+      ``,
+      `#### **💚 What Users Love**`,
+      loves.length ? list(loves) : '• Positive mentions exist but were not strongly classified in this window.',
+      ``,
+      `#### **⚠️ What Users Dislike**`,
+      notLoves.length ? list(notLoves) : '• Few explicit complaints detected in this window.',
+      ``,
+      `---`,
+    ].join('\n');
+  };
+
+  const competitorsMd = [input.me.name, ...input.competitors.map(c => c.name)]
+    .filter(Boolean)
+    .map(name => sectionForProduct(name, byCompetitor[name] || []))
+    .join('\n');
+
+  const header = [
+    '# **Competitive Intelligence Report**',
+    '',
+    '---',
+    '',
+    `*Report generated via heuristic fallback (no AI model). Data from ${coverage.totalThreads} threads and ${coverage.totalComments} comments across ${coverage.subredditsUsed} subreddits over ${coverage.days} days.*`,
+    '',
+  ].join('\n');
+
+  const takeaways = [
+    '## **💡 Strategic Takeaways**',
+    '',
+    '1. Focus on repeatedly mentioned pain points and turn them into roadmap items.',
+    '2. Emphasize strengths users already praise in your marketing and onboarding.',
+    '3. Track new launches closely to adjust positioning within 1–2 weeks of release.',
+    '',
+    '---',
+    `*This fallback ensures the report is always generated even if the serverless analysis fails.*`,
+  ].join('\n');
+
+  return [header, '## **Competitor Analysis**', '', competitorsMd, takeaways].join('\n');
+}
+
+function truncate(s: string, n: number): string {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+function buildCsv(items: RawItem[]): string {
+  const headers = ['Competitor', 'User Feedback', 'Score', 'Subreddit', 'Thread Link'];
+  const rows = items.slice(0, 200).map(i => [
+    i.matchedCompetitor,
+    '"' + truncate(i.title_or_text.replace(/"/g, '""'), 180) + '"',
+    String(i.score ?? 0),
+    `r/${i.subreddit}`,
+    i.thread_url,
+  ]);
+  return [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 }
 
 // Stream-aware API call helper
