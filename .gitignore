@@ -52,3 +52,5 @@ logs
 # Test files
 test-*.js
 debug-*.js
+# Local Netlify folder
+.netlify
