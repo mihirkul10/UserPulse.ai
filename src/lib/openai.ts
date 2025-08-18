@@ -16,24 +16,7 @@ function getOpenAI() {
   return openai;
 }
 
-// Select a compact but representative subset of items for the LLM
-function selectItemsForLLM(items: UnifiedItem[], maxPerProduct: number, maxChars: number): UnifiedItem[] {
-  const byProduct: Record<string, UnifiedItem[]> = {};
-  for (const it of items) {
-    (byProduct[it.matchedCompetitor] ||= []).push(it);
-  }
-  const selected: UnifiedItem[] = [];
-  for (const [_, arr] of Object.entries(byProduct)) {
-    // Sort by score/engagement and pick top N with truncated text
-    arr.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    selected.push(...arr.slice(0, maxPerProduct).map(i => ({
-      ...i,
-      title_or_text: (i.title_or_text || '').slice(0, maxChars)
-    })));
-  }
-  // Cap absolute size to avoid huge prompts
-  return selected.slice(0, 100);
-}
+// (Prompt selection helper removed to preserve full prompt quality)
 
 // Helper function to safely call OpenAI API with proper error handling
 async function callOpenAI(messages: any[], functionName: string) {
@@ -357,8 +340,6 @@ export function buildUserPromptV2(
   input: AnalyzeInput,
   coverage: CoverageMeta
 ) {
-  // Budget selection: limit items to keep prompt compact and fast for serverless
-  const selected = selectItemsForLLM(unified, 18, 120);
   // Group items by product (including founder's product)
   const productGroups: { [key: string]: Array<{
     type: string;
@@ -372,7 +353,7 @@ export function buildUserPromptV2(
     outbound_urls: string[];
   }> } = {};
   
-  selected.forEach(item => {
+  unified.slice(0, 250).forEach(item => {
     const product = item.matchedCompetitor;
     if (!productGroups[product]) {
       productGroups[product] = [];
@@ -475,19 +456,12 @@ export async function writeReportV2(
   const clarity = REPORT_FEW_SHOT_CLARITY;
 
   console.log('[writeReportV2] Starting report generation...');
-  // Hard timeout (20s) to ensure serverless returns before platform cutoff
-  const timeoutMs = 20_000;
-  const timedCall = new Promise<string | null>((resolve) => {
-    setTimeout(() => resolve(null), timeoutMs);
-  });
-
-  const aiCall = callOpenAI([
+  
+  const content = await callOpenAI([
     { role: "system", content: sys },
     { role: "user", content: clarity },
     { role: "user", content: usr }
   ], 'writeReportV2');
-
-  const content = await Promise.race([aiCall, timedCall]);
 
   if (content) {
     console.log('[writeReportV2] Report generated successfully');
