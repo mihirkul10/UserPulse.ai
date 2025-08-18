@@ -29,14 +29,7 @@ const RequestSchema = z.object({
 });
 
 function initReddit() {
-  console.log('Initializing Reddit client...');
-  console.log('Reddit credentials check:', {
-    userAgent: process.env.REDDIT_USER_AGENT ? 'Set' : 'Missing',
-    clientId: process.env.REDDIT_CLIENT_ID ? 'Set' : 'Missing',
-    clientSecret: process.env.REDDIT_CLIENT_SECRET ? 'Set' : 'Missing',
-    username: process.env.REDDIT_USERNAME ? 'Set' : 'Missing',
-    password: process.env.REDDIT_PASSWORD ? 'Set' : 'Missing',
-  });
+  // Reddit client initialization
   
   return new snoowrap({
     userAgent: process.env.REDDIT_USER_AGENT || 'competitor-insight/1.0',
