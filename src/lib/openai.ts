@@ -398,16 +398,44 @@ export async function writeReportV2(
   const usr = buildUserPromptV2(unified, input, coverage);
   const clarity = REPORT_FEW_SHOT_CLARITY;
 
-  const completion = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o",
-    messages: [
-      { role: "system", content: sys },
-      { role: "user", content: clarity },
-      { role: "user", content: usr }
-    ]
-  });
+  try {
+    console.log('Starting report generation with OpenAI...');
+    const completion = await ai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o",
+      messages: [
+        { role: "system", content: sys },
+        { role: "user", content: clarity },
+        { role: "user", content: usr }
+      ]
+    });
 
-  return completion.choices[0]?.message?.content || '';
+    console.log('Report generation completed successfully');
+    return completion.choices[0]?.message?.content || '';
+  } catch (error) {
+    console.error('Error generating report:', error);
+    // Return a fallback report if OpenAI fails
+    return `# **Competitive Intelligence Report**
+
+## **Analysis Summary**
+Report generation encountered an issue. This may be due to:
+- API timeout or rate limiting
+- Large data processing requirements
+- Network connectivity issues
+
+Please try again with a shorter time period or fewer competitors.
+
+## **Data Coverage**
+- Items analyzed: ${unified.length}
+- Time period: ${input.days} days
+- Competitors: ${input.competitors.map(c => c.name).join(', ')}
+
+## **Recommendations**
+1. Try reducing the analysis time period to 7-14 days
+2. Analyze fewer competitors at once (1-2 maximum)
+3. Check your internet connection and try again
+
+*This is a fallback report due to processing limitations.*`;
+  }
 }
 
 export async function writeReport(

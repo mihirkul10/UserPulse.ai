@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
     };
     
     console.log('Generating report with LLM');
+    console.log(`Report generation input: ${classifiedItems.length} items, ${input.competitors.length} competitors, ${input.days} days`);
     
     function hasRedditLinks(md: string) {
       // crude but effective: looks for reddit.com or /r/… permalink patterns
@@ -166,7 +167,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Generate the final report using V2 writer
+    const startTime = Date.now();
+    console.log('Calling writeReportV2...');
     const markdown = await writeReportV2(classifiedItems, input, coverage);
+    const endTime = Date.now();
+    console.log(`Report generation completed in ${endTime - startTime}ms`);
     const finalMarkdown = hasRedditLinks(markdown)
       ? markdown
       : markdown + `\n\n> ⚠️ Evidence note: Fewer Reddit sources than expected. Consider widening the date window or lowering score thresholds.\n`;
