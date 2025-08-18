@@ -124,7 +124,7 @@ async function streamCall(
     const result = await response.json();
     return result;
   } catch (error) {
-    onLog('System', `Error calling ${endpoint}: ${error instanceof Error ? error.message : 'Unknown'}`);
+    onLog(`[System] Error calling ${endpoint}: ${error instanceof Error ? error.message : 'Unknown'}`);
     throw error;
   }
 }
