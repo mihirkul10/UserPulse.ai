@@ -93,16 +93,41 @@ export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: 
                 style={{ display: 'flex', alignItems: 'center', gap: 12 }}
               >
                 <Box
-                  component="img"
-                  src={mode === 'dark' ? "/userpulse-logo-dark.svg" : "/userpulse-logo-light.svg"}
-                  alt="UserPulse.AI"
                   sx={{
                     width: 48,
-                    height: 36,
-                    borderRadius: 1,
+                    height: 48,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: mode === 'dark' ? '#ffffff' : '#1a1a1a',
                     transition: 'all 0.3s ease',
                   }}
-                />
+                >
+                  <svg width="48" height="48" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="100" cy="100" r="75" stroke="currentColor" strokeWidth="4" fill="none" opacity="0.9"/>
+                    <g transform="translate(100, 50)">
+                      <circle cx="-25" cy="0" r="8" fill="currentColor" opacity="0.7"/>
+                      <circle cx="0" cy="0" r="8" fill="currentColor" opacity="0.9"/>
+                      <circle cx="25" cy="0" r="8" fill="currentColor" opacity="0.7"/>
+                    </g>
+                    <path d="M 40 100 L 60 100 L 70 85 L 80 115 L 90 75 L 100 125 L 110 75 L 120 115 L 130 85 L 140 100 L 160 100" 
+                          stroke="currentColor" 
+                          strokeWidth="4" 
+                          fill="none" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round"/>
+                    <circle cx="90" cy="75" r="3" fill="#FF6B35"/>
+                    <circle cx="100" cy="125" r="4" fill="#FF6B35"/>
+                    <circle cx="110" cy="75" r="3" fill="#FF6B35"/>
+                    <g transform="translate(100, 150)" opacity="0.6">
+                      <rect x="-30" y="0" width="8" height="15" rx="2" fill="currentColor"/>
+                      <rect x="-15" y="-5" width="8" height="20" rx="2" fill="currentColor"/>
+                      <rect x="0" y="-2" width="8" height="17" rx="2" fill="currentColor"/>
+                      <rect x="15" y="-8" width="8" height="23" rx="2" fill="currentColor"/>
+                      <rect x="30" y="0" width="8" height="15" rx="2" fill="currentColor"/>
+                    </g>
+                  </svg>
+                </Box>
                 <Typography 
                   variant="h6" 
                   sx={{ 

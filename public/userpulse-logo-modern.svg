@@ -1,0 +1,59 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="80" fill="currentColor" opacity="0.05"/>
+  
+  <!-- User avatars arranged in a circle (Reddit-inspired) -->
+  <g opacity="0.8">
+    <!-- Top user -->
+    <circle cx="100" cy="40" r="15" fill="currentColor" opacity="0.3"/>
+    <circle cx="100" cy="35" r="6" fill="currentColor"/>
+    <path d="M 92 43 Q 100 48 108 43" stroke="currentColor" stroke-width="2" fill="none"/>
+    
+    <!-- Right user -->
+    <circle cx="145" cy="75" r="15" fill="currentColor" opacity="0.3"/>
+    <circle cx="145" cy="70" r="6" fill="currentColor"/>
+    <path d="M 137 78 Q 145 83 153 78" stroke="currentColor" stroke-width="2" fill="none"/>
+    
+    <!-- Bottom right user -->
+    <circle cx="130" cy="130" r="15" fill="currentColor" opacity="0.3"/>
+    <circle cx="130" cy="125" r="6" fill="currentColor"/>
+    <path d="M 122 133 Q 130 138 138 133" stroke="currentColor" stroke-width="2" fill="none"/>
+    
+    <!-- Bottom left user -->
+    <circle cx="70" cy="130" r="15" fill="currentColor" opacity="0.3"/>
+    <circle cx="70" cy="125" r="6" fill="currentColor"/>
+    <path d="M 62 133 Q 70 138 78 133" stroke="currentColor" stroke-width="2" fill="none"/>
+    
+    <!-- Left user -->
+    <circle cx="55" cy="75" r="15" fill="currentColor" opacity="0.3"/>
+    <circle cx="55" cy="70" r="6" fill="currentColor"/>
+    <path d="M 47 78 Q 55 83 63 78" stroke="currentColor" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Central pulse visualization -->
+  <g transform="translate(100, 100)">
+    <!-- Pulse wave -->
+    <path d="M -30 0 L -20 0 L -15 -15 L -10 10 L -5 -20 L 0 25 L 5 -20 L 10 10 L 15 -15 L 20 0 L 30 0" 
+          stroke="#FF6B35" 
+          stroke-width="3" 
+          fill="none" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+    
+    <!-- Pulse dots -->
+    <circle cx="-15" cy="-15" r="2" fill="#FF6B35"/>
+    <circle cx="-5" cy="-20" r="2" fill="#FF6B35"/>
+    <circle cx="0" cy="25" r="3" fill="#FF6B35"/>
+    <circle cx="5" cy="-20" r="2" fill="#FF6B35"/>
+    <circle cx="15" cy="-15" r="2" fill="#FF6B35"/>
+  </g>
+  
+  <!-- Connection lines between users (network effect) -->
+  <g opacity="0.2">
+    <line x1="100" y1="55" x2="135" y2="75" stroke="currentColor" stroke-width="1"/>
+    <line x1="135" y1="85" x2="125" y2="115" stroke="currentColor" stroke-width="1"/>
+    <line x1="115" y1="125" x2="85" y2="125" stroke="currentColor" stroke-width="1"/>
+    <line x1="75" y1="115" x2="65" y2="85" stroke="currentColor" stroke-width="1"/>
+    <line x1="65" y1="75" x2="100" y2="55" stroke="currentColor" stroke-width="1"/>
+  </g>
+</svg>

@@ -17,7 +17,7 @@ export default function ThemeAwareFavicon() {
     const favicon = document.createElement('link');
     favicon.rel = 'icon';
     favicon.type = 'image/svg+xml';
-    favicon.href = mode === 'dark' ? '/favicon-dark.svg' : '/favicon-light.svg';
+    favicon.href = '/favicon-new.svg';
     
     document.head.appendChild(favicon);
 
