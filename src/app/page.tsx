@@ -10,7 +10,7 @@ import ReportView from '@/components/ReportView';
 import HistoryDrawer from '@/components/HistoryDrawer';
 import HowItWorksDialog from '@/components/HowItWorksDialog';
 import { ProgressController } from '@/components/SmoothProgress';
-import { ProductProfile, AnalyzeInput } from '@/lib/types';
+import { ProductProfile, AnalyzeInput, ReportSections, CoverageMeta } from '@/lib/types';
 import { runAnalysisWithStreaming, AnalysisResult } from '@/app/actions';
 import { saveReport } from '@/lib/storage';
 import { DEFAULT_SUBREDDITS } from '@/lib/subreddits';
@@ -140,7 +140,7 @@ export default function Home() {
     progressController.current.reset();
   };
 
-  const handleLoadFromHistory = (report: { report: any; coverage: any; input: any }) => {
+  const handleLoadFromHistory = (report: { report: ReportSections; coverage: CoverageMeta; input: AnalyzeInput }) => {
     setAnalysisResult({
       report: report.report,
       coverage: report.coverage,

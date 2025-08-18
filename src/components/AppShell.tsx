@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -12,7 +12,6 @@ import {
   Divider,
   Button,
   useScrollTrigger,
-  Slide,
   Fade,
 } from '@mui/material';
 import {
@@ -31,15 +30,7 @@ interface AppShellProps {
   onHowItWorksOpen?: () => void;
 }
 
-function HideOnScroll({ children }: { children: React.ReactElement }) {
-  const trigger = useScrollTrigger();
-  
-  return (
-    <Slide appear={false} direction="down" in={!trigger}>
-      {children}
-    </Slide>
-  );
-}
+// Removed unused HideOnScroll component
 
 function ElevationScroll({ children }: { children: React.ReactElement }) {
   const trigger = useScrollTrigger({
