@@ -36,7 +36,6 @@ Product: ${productName}`;
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
-    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -84,7 +83,6 @@ CRITICAL: Return ONLY a JSON array of indices. No explanations. Example: [0,1,2,
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
-    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -130,7 +128,6 @@ CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-4o',
-    temperature: 0.1,
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -403,7 +400,6 @@ export async function writeReportV2(
 
   const completion = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-4o",
-    temperature: 0.1,
     messages: [
       { role: "system", content: sys },
       { role: "user", content: clarity },
@@ -463,7 +459,6 @@ Product: ${product.name}`;
     
     const response = await ai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o',
-      temperature: 0.1,
       messages: [
         { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
         { role: 'user', content: prompt }
