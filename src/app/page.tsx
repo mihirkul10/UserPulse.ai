@@ -34,7 +34,11 @@ export default function Home() {
   const [consoleOpen, setConsoleOpen] = useState(false);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [tasks, setTasks] = useState(TASKS);
+  const [tasks, setTasks] = useState<Array<{
+    id: string;
+    label: string;
+    status: 'pending' | 'active' | 'completed';
+  }>>(TASKS);
   const [currentSubtext, setCurrentSubtext] = useState<string>('');
   
   const progressController = useRef(new ProgressController());
