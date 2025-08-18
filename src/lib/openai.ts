@@ -5,6 +5,10 @@ let openai: OpenAI | null = null;
 
 function getOpenAI() {
   if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    console.log('Initializing OpenAI client...');
     openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
@@ -430,10 +434,12 @@ export async function writeReport(
 }
 
 export async function generateProductContext(product: { name: string }): Promise<ContextPack> {
-  const ai = getOpenAI();
-  
-  const prompt = `Generate a context summary for the product "${product.name}".
-  
+  try {
+    console.log('Generating product context for:', product.name);
+    const ai = getOpenAI();
+    
+    const prompt = `Generate a context summary for the product "${product.name}".
+    
 Provide:
 1. A brief description of what this product does
 2. Key features or characteristics
@@ -442,18 +448,33 @@ Provide:
 
 Return as JSON: {"contextText": "...", "keywords": ["...", "..."]}`;
 
-  const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
-    messages: [{ role: 'user', content: prompt }],
-    temperature: 0.2,
-  });
+    console.log('Using OpenAI model:', process.env.OPENAI_MODEL || 'gpt-4o');
+    
+    const response = await ai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    });
 
-  try {
+    console.log('OpenAI response received');
+    
     const content = response.choices[0]?.message?.content || '{}';
+    console.log('Raw response content:', content.substring(0, 200) + '...');
+    
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
-    return JSON.parse(cleanContent);
+    const result = JSON.parse(cleanContent);
+    
+    console.log('Successfully parsed product context');
+    return result;
   } catch (error) {
-    console.error('Failed to parse product context response:', error);
+    console.error('Failed to generate product context:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    });
+    
+    // Return fallback context
     return {
       contextText: `${product.name} is a software product.`,
       keywords: [product.name]
