@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="32" height="32" fill="transparent"/>
+  <!-- Speech bubble -->
+  <path d="M6 10 L26 10 Q28 10 28 12 L28 18 Q28 20 26 20 L12 20 L8 24 L10 20 L8 20 Q6 20 6 18 L6 12 Q6 10 8 10 Z" 
+        stroke="#333333" stroke-width="2" fill="none" stroke-linejoin="round"/>
+  <!-- Analytics line -->
+  <path d="M10 17 L14 15 L18 16 L22 13 L26 14" 
+        stroke="#333333" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  <!-- Orange dot -->
+  <circle cx="26" cy="8" r="3" fill="#FF6B35"/>
+</svg>

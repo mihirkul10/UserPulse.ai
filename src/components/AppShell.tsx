@@ -94,12 +94,13 @@ export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: 
               >
                 <Box
                   component="img"
-                  src="/userpulse-logo.svg"
+                  src={mode === 'dark' ? "/userpulse-logo-dark.svg" : "/userpulse-logo-light.svg"}
                   alt="UserPulse.AI"
                   sx={{
                     width: 48,
                     height: 36,
                     borderRadius: 1,
+                    transition: 'all 0.3s ease',
                   }}
                 />
                 <Typography 
