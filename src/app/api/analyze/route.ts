@@ -113,6 +113,12 @@ function calculateRankScore(item: RawItem): number {
 
 export async function POST(request: NextRequest) {
   try {
+    // Soft timeout guard (45s) to ensure we always return JSON on serverless platforms
+    const abortController = new AbortController();
+    const softTimeout = setTimeout(() => {
+      try { abortController.abort(); } catch {}
+    }, 45_000);
+
     // Check for required environment variables
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
@@ -186,7 +192,8 @@ export async function POST(request: NextRequest) {
     };
     
     console.log('Analysis completed successfully');
-    
+    clearTimeout(softTimeout);
+
     return NextResponse.json({
       report: enhancedReport,
       coverage,
@@ -202,9 +209,10 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    return NextResponse.json(
-      { error: 'Failed to analyze data' },
-      { status: 500 }
-    );
+    // Always return structured JSON, even on unexpected failures
+    return NextResponse.json({
+      error: 'Failed to analyze data',
+      hint: 'Try reducing the date range to 7–14 days or fewer competitors. If this persists on Vercel, the function may be timing out before returning JSON.',
+    }, { status: 500 });
   }
 }

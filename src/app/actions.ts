@@ -114,15 +114,27 @@ async function streamCall(
       body: JSON.stringify(data),
     });
     
+    // Read raw text first to guard against empty/HTML responses from platform timeouts
+    const rawText = await response.text();
+    
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || `Request to ${endpoint} failed`);
+      // Try to parse JSON error, otherwise surface raw text
+      try {
+        const errJson = rawText ? JSON.parse(rawText) : {};
+        throw new Error(errJson.error || `Request to ${endpoint} failed (${response.status}).`);
+      } catch {
+        throw new Error(`Request to ${endpoint} failed (${response.status}). Body: ${rawText?.slice(0, 200) || 'empty response'}`);
+      }
     }
     
-    // For now, return JSON directly
-    // TODO: Implement actual streaming when routes support it
-    const result = await response.json();
-    return result;
+    // Try to parse JSON; if invalid, surface raw body for debugging
+    try {
+      const parsed = rawText ? JSON.parse(rawText) : null;
+      if (parsed == null) throw new Error('Empty JSON body');
+      return parsed;
+    } catch (e) {
+      throw new Error(`Invalid JSON from ${endpoint}. Body: ${rawText?.slice(0, 200) || 'empty'}`);
+    }
   } catch (error) {
     onLog(`[System] Error calling ${endpoint}: ${error instanceof Error ? error.message : 'Unknown'}`);
     throw error;
