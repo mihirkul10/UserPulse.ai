@@ -15,7 +15,7 @@ import {
   StepLabel,
   StepContent,
   Chip,
-  Divider,
+
 } from '@mui/material';
 import {
   Close,

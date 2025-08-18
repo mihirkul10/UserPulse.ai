@@ -13,12 +13,12 @@ import {
   ListItemText,
   CircularProgress,
   Fade,
-  Collapse,
+
 } from '@mui/material';
 import {
   CheckCircleOutline,
   RadioButtonUnchecked,
-  Circle,
+
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ProgressController } from './SmoothProgress';
@@ -85,7 +85,7 @@ export default function ProgressPanel({
     }
   }, [currentSubtext]);
 
-  const activeTask = tasks.find(t => t.status === 'active');
+  // const activeTask = tasks.find(t => t.status === 'active');
 
   return (
     <motion.div

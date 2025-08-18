@@ -54,7 +54,7 @@ function ElevationScroll({ children }: { children: React.ReactElement }) {
 
 export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: AppShellProps) {
   const { mode, toggleTheme } = useTheme();
-  const [showHelp, setShowHelp] = useState(false);
+
 
   useEffect(() => {
     // Keyboard shortcuts

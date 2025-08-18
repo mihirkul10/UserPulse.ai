@@ -12,7 +12,7 @@ import HowItWorksDialog from '@/components/HowItWorksDialog';
 import { ProgressController } from '@/components/SmoothProgress';
 import { ProductProfile, AnalyzeInput } from '@/lib/types';
 import { runAnalysisWithStreaming, AnalysisResult } from '@/app/actions';
-import { saveReport, getReports } from '@/lib/storage';
+import { saveReport } from '@/lib/storage';
 import { DEFAULT_SUBREDDITS } from '@/lib/subreddits';
 
 // Task definitions
@@ -140,7 +140,7 @@ export default function Home() {
     progressController.current.reset();
   };
 
-  const handleLoadFromHistory = (report: any) => {
+  const handleLoadFromHistory = (report: { report: any; coverage: any; input: any }) => {
     setAnalysisResult({
       report: report.report,
       coverage: report.coverage,

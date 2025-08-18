@@ -269,7 +269,17 @@ export function buildUserPromptV2(
   coverage: CoverageMeta
 ) {
   // Group items by product (including founder's product)
-  const productGroups: { [key: string]: any[] } = {};
+  const productGroups: { [key: string]: Array<{
+    type: string;
+    aspect: string;
+    subreddit: string;
+    score: number;
+    num_comments: number;
+    dateUTC: string;
+    title_or_text: string;
+    permalink: string;
+    outbound_urls: string[];
+  }> } = {};
   
   unified.slice(0, 250).forEach(item => {
     const product = item.matchedCompetitor;
@@ -291,7 +301,17 @@ export function buildUserPromptV2(
 
   // Separate founder's product data from competitors
   const founderProductData = productGroups[input.me.name] || [];
-  const competitorData: { [key: string]: any[] } = {};
+  const competitorData: { [key: string]: Array<{
+    type: string;
+    aspect: string;
+    subreddit: string;
+    score: number;
+    num_comments: number;
+    dateUTC: string;
+    title_or_text: string;
+    permalink: string;
+    outbound_urls: string[];
+  }> } = {};
   
   input.competitors.forEach(comp => {
     if (productGroups[comp.name]) {
@@ -382,7 +402,7 @@ export async function writeReport(
   unified: UnifiedItem[],
   input: AnalyzeInput,
   coverage: CoverageMeta,
-  contextPack: ContextPack
+  _contextPack: ContextPack
 ): Promise<ReportSections> {
   // Use the new V2 writer for better structure and evidence linking
   const markdown = await writeReportV2(unified, input, coverage);

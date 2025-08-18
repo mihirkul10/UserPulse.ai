@@ -15,9 +15,7 @@ import {
   AccordionDetails,
   Chip,
   Tooltip,
-  Fade,
   Collapse,
-  Alert,
 } from '@mui/material';
 import {
   ExpandMore,
@@ -27,7 +25,6 @@ import {
   Clear,
   AutoAwesome,
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
 import { ProductProfile } from '@/lib/types';
 import { DEFAULT_SUBREDDITS } from '@/lib/subreddits';
 
