@@ -39,7 +39,7 @@ Example for "GitHub Copilot": ["GitHub Copilot", "github copilot", "copilot", "g
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5',
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.2,
+
   });
 
   try {
@@ -86,7 +86,7 @@ Return indices as JSON array. Example: [0,1,2,3,4,5,7,8,9]`;
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5',
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.2,
+
   });
 
   try {
@@ -130,7 +130,7 @@ ${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 200)}...`).jo
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5',
     messages: [{ role: 'user', content: prompt }],
-    temperature: 0.2,
+
   });
 
   try {
@@ -391,7 +391,7 @@ export async function writeReportV2(
 
   const completion = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || "gpt-5",
-    temperature: 0.2,
+
     messages: [
       { role: "system", content: sys },
       { role: "user", content: clarity },
@@ -453,7 +453,7 @@ Return as JSON: {"contextText": "...", "keywords": ["...", "..."]}`;
     const response = await ai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5',
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
+  
     });
 
     console.log('OpenAI response received');
