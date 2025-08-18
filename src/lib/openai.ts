@@ -16,11 +16,59 @@ function getOpenAI() {
   return openai;
 }
 
+// Helper function to safely call OpenAI API with proper error handling
+async function callOpenAI(messages: any[], functionName: string) {
+  try {
+    const ai = getOpenAI();
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
+    
+    console.log(`[${functionName}] Calling OpenAI with model: ${model}`);
+    
+    const response = await ai.chat.completions.create({
+      model: model,
+      messages: messages,
+      max_tokens: 4000,
+      temperature: 0.7,
+    });
+    
+    const content = response.choices[0]?.message?.content;
+    
+    if (!content) {
+      console.error(`[${functionName}] OpenAI returned empty response`);
+      return null;
+    }
+    
+    // Check if the response is an error message (not JSON)
+    if (content.toLowerCase().startsWith('an error') || 
+        content.toLowerCase().startsWith('error:') ||
+        content.toLowerCase().includes('api key') ||
+        content.toLowerCase().includes('unauthorized')) {
+      console.error(`[${functionName}] OpenAI returned error message:`, content);
+      return null;
+    }
+    
+    return content;
+  } catch (error: any) {
+    console.error(`[${functionName}] OpenAI API call failed:`, error);
+    
+    // Log specific error details
+    if (error?.response?.status === 401) {
+      console.error('Authentication failed - check your API key');
+    } else if (error?.response?.status === 429) {
+      console.error('Rate limit exceeded - too many requests');
+    } else if (error?.response?.status === 500) {
+      console.error('OpenAI server error');
+    } else if (error?.code === 'ECONNREFUSED') {
+      console.error('Network error - cannot connect to OpenAI');
+    }
+    
+    return null;
+  }
+}
+
 export async function generateEntityResolution(
   productName: string
 ): Promise<string[]> {
-  const ai = getOpenAI();
-  
   const prompt = `Generate search query variants for Reddit search for product: "${productName}"
 
 CRITICAL: Return ONLY a valid JSON array of strings. No explanations, no markdown, just the JSON array.
@@ -34,29 +82,31 @@ Include variations like:
 
 Product: ${productName}`;
 
-  const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
-      { role: 'user', content: prompt }
-    ],
-  });
+  const content = await callOpenAI([
+    { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+    { role: 'user', content: prompt }
+  ], 'generateEntityResolution');
+
+  if (!content) {
+    console.log(`[generateEntityResolution] Using fallback for ${productName}`);
+    return [productName, productName.toLowerCase()];
+  }
 
   try {
-    const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     
     // Check if content looks like JSON
     if (!cleanContent.startsWith('[') && !cleanContent.startsWith('{')) {
-      console.error('OpenAI returned non-JSON response:', cleanContent.substring(0, 100));
-      return [productName];
+      console.error('[generateEntityResolution] Response is not JSON:', cleanContent.substring(0, 100));
+      return [productName, productName.toLowerCase()];
     }
     
-    return JSON.parse(cleanContent);
+    const result = JSON.parse(cleanContent);
+    console.log(`[generateEntityResolution] Successfully parsed ${result.length} variants`);
+    return result;
   } catch (error) {
-    console.error('Failed to parse entity resolution response:', error);
-    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
-    return [productName];
+    console.error('[generateEntityResolution] JSON parse failed:', error);
+    return [productName, productName.toLowerCase()];
   }
 }
 
@@ -70,8 +120,6 @@ export async function filterForRelevance(
 ): Promise<ItemForRelevance[]> {
   if (items.length === 0) return [];
   
-  const ai = getOpenAI();
-  
   const prompt = `Filter Reddit posts/comments for items related to ${productName} or its competitors.
 
 BE VERY INCLUSIVE - include items about product mentions, comparisons, user experiences, bugs, pricing, etc.
@@ -81,30 +129,31 @@ ${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 200)}...`).jo
 
 CRITICAL: Return ONLY a JSON array of indices. No explanations. Example: [0,1,2,3,4]`;
 
-  const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
-      { role: 'user', content: prompt }
-    ],
-  });
+  const content = await callOpenAI([
+    { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+    { role: 'user', content: prompt }
+  ], 'filterForRelevance');
+
+  if (!content) {
+    console.log('[filterForRelevance] Using all items due to API failure');
+    return items; // Include all items if API fails
+  }
 
   try {
-    const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     
     // Check if content looks like JSON
     if (!cleanContent.startsWith('[')) {
-      console.error('OpenAI returned non-JSON response for relevance filter:', cleanContent.substring(0, 100));
-      return items; // Include all items if parsing fails
+      console.error('[filterForRelevance] Response is not JSON array:', cleanContent.substring(0, 100));
+      return items;
     }
     
     const indices = JSON.parse(cleanContent);
-    return indices.map((i: number) => items[i]).filter(Boolean);
+    const filtered = indices.map((i: number) => items[i]).filter(Boolean);
+    console.log(`[filterForRelevance] Filtered to ${filtered.length} items`);
+    return filtered;
   } catch (error) {
-    console.error('Failed to parse relevance filter response:', error);
-    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
-    // If parsing fails, include all items to be safe
+    console.error('[filterForRelevance] JSON parse failed:', error);
     return items;
   }
 }
@@ -115,8 +164,6 @@ export async function classifyAspects(
 ): Promise<UnifiedItem[]> {
   if (items.length === 0) return [];
   
-  const ai = getOpenAI();
-  
   const prompt = `Classify these Reddit items about ${competitor} into aspects.
 
 Categories: launch, performance, reliability, dx, pricing, integration, support, comparison, love, notlove, feature
@@ -126,21 +173,22 @@ ${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 150)}...`).jo
 
 CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "performance"}, ...]`;
 
-  const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-4o',
-    messages: [
-      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
-      { role: 'user', content: prompt }
-    ],
-  });
+  const content = await callOpenAI([
+    { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+    { role: 'user', content: prompt }
+  ], 'classifyAspects');
+
+  if (!content) {
+    console.log(`[classifyAspects] Using default aspects for ${competitor}`);
+    return items.map(item => ({ ...item, aspect: 'love' as const }));
+  }
 
   try {
-    const content = response.choices[0]?.message?.content || '[]';
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     
     // Check if content looks like JSON
     if (!cleanContent.startsWith('[')) {
-      console.error('OpenAI returned non-JSON response for aspect classification:', cleanContent.substring(0, 100));
+      console.error('[classifyAspects] Response is not JSON array:', cleanContent.substring(0, 100));
       return items.map(item => ({ ...item, aspect: 'love' as const }));
     }
     
@@ -151,8 +199,7 @@ CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "
       aspect: classifications[i]?.aspect || 'love'
     }));
   } catch (error) {
-    console.error('Failed to parse aspect classification response:', error);
-    console.error('Raw content was:', response.choices[0]?.message?.content?.substring(0, 200));
+    console.error('[classifyAspects] JSON parse failed:', error);
     return items.map(item => ({ ...item, aspect: 'love' as const }));
   }
 }
@@ -392,50 +439,91 @@ export async function writeReportV2(
   input: AnalyzeInput,
   coverage: CoverageMeta
 ): Promise<string> {
-  const ai = getOpenAI();
-  
   const sys = REPORT_SYSTEM_PROMPT_V2;
   const usr = buildUserPromptV2(unified, input, coverage);
   const clarity = REPORT_FEW_SHOT_CLARITY;
 
-  try {
-    console.log('Starting report generation with OpenAI...');
-    const completion = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o",
-      messages: [
-        { role: "system", content: sys },
-        { role: "user", content: clarity },
-        { role: "user", content: usr }
-      ]
-    });
+  console.log('[writeReportV2] Starting report generation...');
+  
+  const content = await callOpenAI([
+    { role: "system", content: sys },
+    { role: "user", content: clarity },
+    { role: "user", content: usr }
+  ], 'writeReportV2');
 
-    console.log('Report generation completed successfully');
-    return completion.choices[0]?.message?.content || '';
-  } catch (error) {
-    console.error('Error generating report:', error);
-    // Return a fallback report if OpenAI fails
-    return `# **Competitive Intelligence Report**
-
-## **Analysis Summary**
-Report generation encountered an issue. This may be due to:
-- API timeout or rate limiting
-- Large data processing requirements
-- Network connectivity issues
-
-Please try again with a shorter time period or fewer competitors.
-
-## **Data Coverage**
-- Items analyzed: ${unified.length}
-- Time period: ${input.days} days
-- Competitors: ${input.competitors.map(c => c.name).join(', ')}
-
-## **Recommendations**
-1. Try reducing the analysis time period to 7-14 days
-2. Analyze fewer competitors at once (1-2 maximum)
-3. Check your internet connection and try again
-
-*This is a fallback report due to processing limitations.*`;
+  if (content) {
+    console.log('[writeReportV2] Report generated successfully');
+    return content;
   }
+
+  // Fallback report if OpenAI fails
+  console.log('[writeReportV2] Using fallback report due to API failure');
+  
+  const competitorNames = input.competitors.map(c => c.name).join(', ');
+  const subredditCount = new Set(unified.map(item => item.subreddit)).size;
+  
+  return `# **Competitive Intelligence Report**
+
+---
+
+## **⚠️ Report Generation Issue**
+
+The AI report generation encountered an issue. This is typically due to one of the following:
+
+### **Possible Causes:**
+1. **OpenAI API Key Issue**: The API key may be invalid, expired, or not properly configured
+2. **Rate Limiting**: Too many requests in a short time period
+3. **Network Issues**: Connection problems to OpenAI servers
+4. **Model Availability**: The specified model (${process.env.OPENAI_MODEL || 'gpt-4o'}) may not be accessible
+
+### **📊 Data Successfully Collected**
+
+Despite the report generation issue, we successfully collected data:
+
+- **Total items analyzed**: ${unified.length}
+- **Time period**: ${input.days} days
+- **Your product**: ${input.me.name}
+- **Competitors tracked**: ${competitorNames}
+- **Subreddits covered**: ${subredditCount}
+- **Threads analyzed**: ${coverage.totalThreads}
+- **Comments analyzed**: ${coverage.totalComments}
+
+### **🔧 How to Fix This**
+
+1. **Verify OpenAI API Key**:
+   - Check that your API key is valid at [platform.openai.com](https://platform.openai.com)
+   - Ensure the key has sufficient credits/quota
+   - Verify the key is correctly set in Vercel environment variables
+
+2. **Try Again With Smaller Scope**:
+   - Reduce time period to 7 days
+   - Analyze 1-2 competitors at a time
+   - This reduces API load and increases success rate
+
+3. **Check Vercel Logs**:
+   - Go to your Vercel dashboard
+   - Click on "Functions" tab
+   - Look for detailed error messages in the logs
+
+### **📋 Sample Data Collected**
+
+Here are some of the Reddit discussions we found about your competitors:
+
+${unified.slice(0, 5).map(item => 
+`**${item.matchedCompetitor}** (r/${item.subreddit}, score: ${item.score})
+"${item.title_or_text.substring(0, 150)}..."
+[View on Reddit](${item.thread_url})
+`).join('\n---\n')}
+
+### **💡 Next Steps**
+
+1. Fix the OpenAI API configuration issue
+2. Redeploy to Vercel with updated environment variables
+3. Try the analysis again with a smaller scope
+
+---
+
+*This fallback report was generated because the AI analysis could not complete. The data collection was successful, but report generation failed.*`;
 }
 
 export async function writeReport(
@@ -461,7 +549,7 @@ export async function writeReport(
   };
   
   // Extract just the Takeaways section if it exists
-  const takeawaysMatch = markdown.match(/## \*\*Takeaways\*\*[\s\S]*/);
+  const takeawaysMatch = markdown.match(/## \*\*💡 Strategic Takeaways\*\*[\s\S]*/);
   if (takeawaysMatch) {
     sections.takeaways = takeawaysMatch[0];
   }
@@ -470,11 +558,9 @@ export async function writeReport(
 }
 
 export async function generateProductContext(product: { name: string }): Promise<ContextPack> {
-  try {
-    console.log('Generating product context for:', product.name);
-    const ai = getOpenAI();
-    
-    const prompt = `You are a product research assistant. Generate a context summary for the product "${product.name}".
+  console.log('[generateProductContext] Generating context for:', product.name);
+  
+  const prompt = `You are a product research assistant. Generate a context summary for the product "${product.name}".
 
 CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
 {"contextText": "brief description of what this product does, its key features and target audience", "keywords": ["keyword1", "keyword2", "keyword3"]}
@@ -483,47 +569,39 @@ Do not include any other text, explanations, or markdown formatting. Just the JS
 
 Product: ${product.name}`;
 
-    console.log('Using OpenAI model:', process.env.OPENAI_MODEL || 'gpt-4o');
-    
-    const response = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o',
-      messages: [
-        { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
-        { role: 'user', content: prompt }
-      ],
-    });
+  const content = await callOpenAI([
+    { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
+    { role: 'user', content: prompt }
+  ], 'generateProductContext');
 
-    console.log('OpenAI response received');
-    
-    const content = response.choices[0]?.message?.content || '{}';
-    console.log('Raw response content:', content.substring(0, 200) + '...');
-    
+  if (!content) {
+    console.log('[generateProductContext] Using fallback context');
+    return {
+      contextText: `${product.name} is a software product that provides solutions for users.`,
+      keywords: [product.name, product.name.toLowerCase()]
+    };
+  }
+
+  try {
     const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
     
     // Check if content looks like JSON
     if (!cleanContent.startsWith('{')) {
-      console.error('OpenAI returned non-JSON response for product context:', cleanContent.substring(0, 100));
+      console.error('[generateProductContext] Response is not JSON object:', cleanContent.substring(0, 100));
       return {
-        contextText: `${product.name} is a software product.`,
-        keywords: [product.name]
+        contextText: `${product.name} is a software product that provides solutions for users.`,
+        keywords: [product.name, product.name.toLowerCase()]
       };
     }
     
     const result = JSON.parse(cleanContent);
-    console.log('Successfully parsed product context');
+    console.log('[generateProductContext] Successfully parsed context');
     return result;
   } catch (error) {
-    console.error('Failed to generate product context:', error);
-    console.error('Error details:', {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : 'No stack trace'
-    });
-    
-    // Return fallback context
+    console.error('[generateProductContext] JSON parse failed:', error);
     return {
-      contextText: `${product.name} is a software product.`,
-      keywords: [product.name]
+      contextText: `${product.name} is a software product that provides solutions for users.`,
+      keywords: [product.name, product.name.toLowerCase()]
     };
   }
 }
