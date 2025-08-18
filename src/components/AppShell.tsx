@@ -177,7 +177,7 @@ export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: 
               <Tooltip title="View on GitHub" arrow>
                 <IconButton 
                   component="a"
-                  href="https://github.com"
+                  href="https://github.com/mihirkul10/UserPulse.ai"
                   target="_blank"
                   rel="noopener noreferrer"
                   size="small"

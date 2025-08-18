@@ -276,50 +276,120 @@ export default function ReportView({ report, coverage, input, onNewAnalysis }: R
       {/* Report content */}
       <Card sx={{ boxShadow: 2 }}>
         <CardContent sx={{ p: { xs: 2, md: 4 } }}>
-          {report.raw ? (
-            <StyledMarkdown>
-              <ReactMarkdown>{report.raw}</ReactMarkdown>
-            </StyledMarkdown>
-          ) : (
+                      {report.raw ? (
+              <StyledMarkdown>
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    )
+                  }}
+                >
+                  {report.raw}
+                </ReactMarkdown>
+              </StyledMarkdown>
+            ) : (
             <StyledMarkdown>
               {report.header && (
                 <>
-                  <ReactMarkdown>{report.header}</ReactMarkdown>
+                  <ReactMarkdown
+                    components={{
+                      a: ({ href, children }) => (
+                        <a href={href} target="_blank" rel="noopener noreferrer">
+                          {children}
+                        </a>
+                      )
+                    }}
+                  >
+                    {report.header}
+                  </ReactMarkdown>
                   <Divider sx={{ my: 3 }} />
                 </>
               )}
 
               {report.launches && (
                 <Box>
-                <ReactMarkdown>{report.launches}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    )
+                  }}
+                >
+                  {report.launches}
+                </ReactMarkdown>
                 <Divider sx={{ my: 2 }} />
               </Box>
             )}
 
             {report.loving && (
               <Box>
-                <ReactMarkdown>{report.loving}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    )
+                  }}
+                >
+                  {report.loving}
+                </ReactMarkdown>
                 <Divider sx={{ my: 2 }} />
               </Box>
             )}
 
             {report.notLoving && (
               <Box>
-                <ReactMarkdown>{report.notLoving}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    )
+                  }}
+                >
+                  {report.notLoving}
+                </ReactMarkdown>
                 <Divider sx={{ my: 2 }} />
               </Box>
             )}
 
             {report.strategicRead && (
               <Box>
-                <ReactMarkdown>{report.strategicRead}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children }) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer">
+                        {children}
+                      </a>
+                    )
+                  }}
+                >
+                  {report.strategicRead}
+                </ReactMarkdown>
                 <Divider sx={{ my: 2 }} />
               </Box>
             )}
 
                 {report.takeaways && (
                   <Box>
-                    <ReactMarkdown>{report.takeaways}</ReactMarkdown>
+                    <ReactMarkdown
+                      components={{
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer">
+                            {children}
+                          </a>
+                        )
+                      }}
+                    >
+                      {report.takeaways}
+                    </ReactMarkdown>
                   </Box>
                 )}
             </StyledMarkdown>
