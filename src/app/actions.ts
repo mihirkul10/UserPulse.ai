@@ -134,13 +134,13 @@ export async function runAnalysis(
   input: AnalyzeInput, 
   onProgress?: ProgressCallback
 ): Promise<AnalysisResult> {
-  const logCallback: LogCallback = (service, message) => {
-    console.log(`[${service}] ${message}`);
+  const logCallback: LogCallback = (log: string) => {
+    console.log(log);
   };
   
-  const progressCallback: ProgressUpdateCallback = (weight, taskIndex) => {
+  const progressCallback: ProgressUpdateCallback = (progress: { percentage: number; taskIndex: number }) => {
     const taskNames = ['context', 'mine-me', 'mine-competitors', 'filter', 'classify', 'compose', 'csv'];
-    onProgress?.(taskNames[taskIndex] || 'processing', `${Math.round(weight)}% complete`);
+    onProgress?.(taskNames[progress.taskIndex] || 'processing', `${Math.round(progress.percentage)}% complete`);
   };
   
   return runAnalysisWithStreaming(input, logCallback, progressCallback);
