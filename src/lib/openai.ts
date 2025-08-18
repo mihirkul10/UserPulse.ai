@@ -35,7 +35,7 @@ Include variations like:
 Product: ${productName}`;
 
   const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
+    model: process.env.OPENAI_MODEL || 'gpt-4o',
     messages: [
       { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
       { role: 'user', content: prompt }
@@ -64,29 +64,21 @@ export async function filterForRelevance(
   
   const ai = getOpenAI();
   
-  const prompt = `Filter these Reddit posts/comments for items related to ${productName} or its competitors/category.
-  
-BE VERY INCLUSIVE - Include items about:
-- Direct mentions of ${productName}
-- Comparisons with ANY product (even if ${productName} not mentioned)
-- General category discussions that could apply
-- User experiences, feedback, questions
-- Setup, usage, bugs, performance issues
-- Pricing, documentation, developer experience
-- Integrations, support, feature requests
-- Opinions, recommendations, alternatives
+  const prompt = `Filter Reddit posts/comments for items related to ${productName} or its competitors.
 
-Only exclude completely unrelated spam. When in doubt, INCLUDE the item.
+BE VERY INCLUSIVE - include items about product mentions, comparisons, user experiences, bugs, pricing, etc.
 
 Items:
-${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 250)}...`).join('\n')}
+${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 200)}...`).join('\n')}
 
-Return indices as JSON array. Example: [0,1,2,3,4,5,7,8,9]`;
+CRITICAL: Return ONLY a JSON array of indices. No explanations. Example: [0,1,2,3,4]`;
 
   const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
-    messages: [{ role: 'user', content: prompt }],
-
+    model: process.env.OPENAI_MODEL || 'gpt-4o',
+    messages: [
+      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+      { role: 'user', content: prompt }
+    ],
   });
 
   try {
@@ -109,28 +101,21 @@ export async function classifyAspects(
   
   const ai = getOpenAI();
   
-  const prompt = `Classify these Reddit items about ${competitor} into detailed aspects:
-- "launch": new features, releases, updates, announcements
-- "performance": speed, efficiency, resource usage
-- "reliability": bugs, crashes, stability issues  
-- "dx": documentation, APIs, developer experience
-- "pricing": cost, value, pricing models
-- "integration": compatibility, plugins, ecosystem
-- "support": customer service, community help
-- "comparison": vs other products, alternatives
-- "love": general positive feedback
-- "notlove": general negative feedback
-- "feature": feature requests, wishlist items
+  const prompt = `Classify these Reddit items about ${competitor} into aspects.
 
-Return JSON array with same order: [{"aspect": "launch|performance|reliability|dx|pricing|integration|support|comparison|love|notlove|feature"}, ...]
+Categories: launch, performance, reliability, dx, pricing, integration, support, comparison, love, notlove, feature
 
 Items:
-${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 200)}...`).join('\n')}`;
+${items.map((item, i) => `${i}: ${item.title_or_text?.substring(0, 150)}...`).join('\n')}
+
+CRITICAL: Return ONLY a JSON array of objects: [{"aspect": "love"}, {"aspect": "performance"}, ...]`;
 
   const response = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || 'gpt-5-nano',
-    messages: [{ role: 'user', content: prompt }],
-
+    model: process.env.OPENAI_MODEL || 'gpt-4o',
+    messages: [
+      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+      { role: 'user', content: prompt }
+    ],
   });
 
   try {
@@ -390,7 +375,7 @@ export async function writeReportV2(
   const clarity = REPORT_FEW_SHOT_CLARITY;
 
   const completion = await ai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-5-nano",
+    model: process.env.OPENAI_MODEL || "gpt-4o",
 
     messages: [
       { role: "system", content: sys },
@@ -447,10 +432,10 @@ Do not include any other text, explanations, or markdown formatting. Just the JS
 
 Product: ${product.name}`;
 
-    console.log('Using OpenAI model:', process.env.OPENAI_MODEL || 'gpt-5-nano');
+    console.log('Using OpenAI model:', process.env.OPENAI_MODEL || 'gpt-4o');
     
     const response = await ai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5-nano',
+      model: process.env.OPENAI_MODEL || 'gpt-4o',
       messages: [
         { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
         { role: 'user', content: prompt }
