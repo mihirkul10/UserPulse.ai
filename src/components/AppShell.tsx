@@ -32,7 +32,11 @@ interface AppShellProps {
 
 // Removed unused HideOnScroll component
 
-function ElevationScroll({ children }: { children: React.ReactElement }) {
+interface ElevationScrollProps {
+  children: React.ReactElement<{ elevation?: number }>;
+}
+
+function ElevationScroll({ children }: ElevationScrollProps) {
   const trigger = useScrollTrigger({
     disableHysteresis: true,
     threshold: 0,
@@ -40,7 +44,7 @@ function ElevationScroll({ children }: { children: React.ReactElement }) {
 
   return React.cloneElement(children, {
     elevation: trigger ? 4 : 0,
-  });
+  } as any);
 }
 
 export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: AppShellProps) {

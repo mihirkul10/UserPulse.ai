@@ -158,7 +158,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
           </Typography>
           
           <Grid container spacing={3}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <TextField
                 fullWidth
                 label="Your Product"
@@ -290,7 +290,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
             <AccordionDetails>
               <Grid container spacing={1}>
                 {DEFAULT_SUBREDDITS.map((subreddit) => (
-                  <Grid item key={subreddit}>
+                  <Grid size="auto" key={subreddit}>
                     <Chip 
                       label={`r/${subreddit}`}
                       variant="outlined"
