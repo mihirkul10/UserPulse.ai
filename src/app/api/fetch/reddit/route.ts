@@ -29,6 +29,15 @@ const RequestSchema = z.object({
 });
 
 function initReddit() {
+  console.log('Initializing Reddit client...');
+  console.log('Reddit credentials check:', {
+    userAgent: process.env.REDDIT_USER_AGENT ? 'Set' : 'Missing',
+    clientId: process.env.REDDIT_CLIENT_ID ? 'Set' : 'Missing',
+    clientSecret: process.env.REDDIT_CLIENT_SECRET ? 'Set' : 'Missing',
+    username: process.env.REDDIT_USERNAME ? 'Set' : 'Missing',
+    password: process.env.REDDIT_PASSWORD ? 'Set' : 'Missing',
+  });
+  
   return new snoowrap({
     userAgent: process.env.REDDIT_USER_AGENT || 'competitor-insight/1.0',
     clientId: process.env.REDDIT_CLIENT_ID!,
@@ -204,6 +213,11 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Error in fetch reddit route:', error);
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack trace'
+    });
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -213,7 +227,10 @@ export async function POST(request: NextRequest) {
     }
     
     return NextResponse.json(
-      { error: 'Failed to fetch Reddit data' },
+      { 
+        error: 'Failed to fetch Reddit data',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
