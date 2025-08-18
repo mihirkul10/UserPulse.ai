@@ -24,11 +24,22 @@ async function callOpenAI(messages: any[], functionName: string) {
     
     console.log(`[${functionName}] Calling OpenAI with model: ${model}`);
     
-    const response = await ai.chat.completions.create({
+    // Use appropriate parameters based on model
+    const params: any = {
       model: model,
       messages: messages,
-      max_completion_tokens: 4000,
-    });
+    };
+    
+    // gpt-4o and gpt-4 use max_tokens, newer models might use max_completion_tokens
+    if (model.includes('gpt-4') || model.includes('gpt-3')) {
+      params.max_tokens = 4000;
+      params.temperature = 0.7;
+    } else {
+      // For newer models that might not support temperature or use different token param
+      params.max_completion_tokens = 4000;
+    }
+    
+    const response = await ai.chat.completions.create(params);
     
     const content = response.choices[0]?.message?.content;
     
