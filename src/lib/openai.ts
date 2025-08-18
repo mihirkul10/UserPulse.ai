@@ -21,25 +21,25 @@ export async function generateEntityResolution(
 ): Promise<string[]> {
   const ai = getOpenAI();
   
-  const prompt = `Generate 10-12 search query variants for Reddit search for product: "${productName}"
+  const prompt = `Generate search query variants for Reddit search for product: "${productName}"
 
-Include:
-1. Exact name as users would type it
-2. All lowercase version
-3. Common misspellings and typos
-4. Popular abbreviations or acronyms
-5. Alternative names or nicknames users might use
-6. With/without spaces, hyphens, dots
-7. Partial name (if multi-word)
-8. Common competitor comparisons (e.g., "vs ${productName}")
+CRITICAL: Return ONLY a valid JSON array of strings. No explanations, no markdown, just the JSON array.
 
-Return ONLY a valid JSON array of strings, nothing else. Do not include quotes in the strings.
-Example for "GitHub Copilot": ["GitHub Copilot", "github copilot", "copilot", "gh copilot", "githubcopilot", "github-copilot", "copilot ai", "vs copilot", "copilot vs", "gihub copilot", "github copiliot"]`;
+Include variations like:
+- Exact name
+- Lowercase version  
+- Common abbreviations
+- Alternative names
+- With/without spaces/hyphens
+
+Product: ${productName}`;
 
   const response = await ai.chat.completions.create({
     model: process.env.OPENAI_MODEL || 'gpt-5-nano',
-    messages: [{ role: 'user', content: prompt }],
-
+    messages: [
+      { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON arrays and nothing else.' },
+      { role: 'user', content: prompt }
+    ],
   });
 
   try {
@@ -438,22 +438,23 @@ export async function generateProductContext(product: { name: string }): Promise
     console.log('Generating product context for:', product.name);
     const ai = getOpenAI();
     
-    const prompt = `Generate a context summary for the product "${product.name}".
-    
-Provide:
-1. A brief description of what this product does
-2. Key features or characteristics
-3. Target audience or use cases
-4. Important keywords for search
+    const prompt = `You are a product research assistant. Generate a context summary for the product "${product.name}".
 
-Return as JSON: {"contextText": "...", "keywords": ["...", "..."]}`;
+CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
+{"contextText": "brief description of what this product does, its key features and target audience", "keywords": ["keyword1", "keyword2", "keyword3"]}
+
+Do not include any other text, explanations, or markdown formatting. Just the JSON object.
+
+Product: ${product.name}`;
 
     console.log('Using OpenAI model:', process.env.OPENAI_MODEL || 'gpt-5-nano');
     
     const response = await ai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-5-nano',
-      messages: [{ role: 'user', content: prompt }],
-  
+      messages: [
+        { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
+        { role: 'user', content: prompt }
+      ],
     });
 
     console.log('OpenAI response received');
