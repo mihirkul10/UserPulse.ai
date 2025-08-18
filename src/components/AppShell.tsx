@@ -94,10 +94,10 @@ export default function AppShell({ children, onHistoryOpen, onHowItWorksOpen }: 
               >
                 <Box
                   component="img"
-                  src="/logo.svg"
+                  src="/userpulse-logo.svg"
                   alt="UserPulse.AI"
                   sx={{
-                    width: 36,
+                    width: 48,
                     height: 36,
                     borderRadius: 1,
                   }}

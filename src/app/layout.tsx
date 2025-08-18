@@ -11,6 +11,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "UserPulse.AI - Competitive Intelligence",
   description: "Scan Reddit. Hear what users say about your competitors.",
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
