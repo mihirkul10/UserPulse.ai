@@ -1,4 +1,4 @@
-import { CoverageMeta, ReportSections } from '@/lib/types';
+// Generic job store usable by multiple background tasks
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed';
 
@@ -8,7 +8,7 @@ export interface JobState {
   progress: number; // 0..100
   logs: string[];
   error?: string;
-  result?: { report: ReportSections; coverage: CoverageMeta };
+  result?: any; // task-specific payload
   updatedAt: number;
 }
 
@@ -43,7 +43,7 @@ export function updateJob(id: string, patch: Partial<JobState>): JobState | unde
   return next;
 }
 
-export function completeJob(id: string, result: { report: ReportSections; coverage: CoverageMeta }) {
+export function completeJob(id: string, result: any) {
   updateJob(id, { status: 'completed', progress: 100, result, logs: [...(jobs.get(id)?.logs || []), '[System] Job completed'] });
 }
 

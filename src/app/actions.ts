@@ -48,8 +48,7 @@ export async function runAnalysisWithStreaming(
     onProgress({ percentage: PROGRESS_WEIGHTS.CONTEXT + PROGRESS_WEIGHTS.MINE_ME, taskIndex: 1 });
     onLog(`[Crawler] 🔍 Searching ${input.subreddits.length} subreddits for discussions about ${input.me.name}...`);
     
-    const mineMe = await streamCall('/api/fetch/reddit', {
-      target: 'me',
+    const mineMe = await runBackgroundJob('/api/fetch/reddit', {
       ...input,
       subreddits: input.subreddits.length > 0 ? input.subreddits : DEFAULT_SUBREDDITS,
       meContext,
@@ -61,8 +60,7 @@ export async function runAnalysisWithStreaming(
     onProgress({ percentage: PROGRESS_WEIGHTS.CONTEXT + PROGRESS_WEIGHTS.MINE_ME + PROGRESS_WEIGHTS.MINE_COMPETITORS, taskIndex: 2 });
     onLog(`[Crawler] 🔍 Searching ${input.subreddits.length} subreddits for discussions about competitors: ${input.competitors.map(c => c.name).join(', ')}...`);
     
-    const mineCompetitors = await streamCall('/api/fetch/reddit', {
-      target: 'competitors',
+    const mineCompetitors = await runBackgroundJob('/api/fetch/reddit', {
       ...input,
       subreddits: input.subreddits.length > 0 ? input.subreddits : DEFAULT_SUBREDDITS,
       meContext,
@@ -283,6 +281,41 @@ async function streamCall(
     onLog(`[System] Error calling ${endpoint}: ${error instanceof Error ? error.message : 'Unknown'}`);
     throw error;
   }
+}
+
+// Background job helper for endpoints converted to BG mode
+async function runBackgroundJob(
+  endpointBase: '/api/fetch/reddit' | '/api/analyze',
+  payload: any,
+  onLog: LogCallback
+): Promise<unknown> {
+  // Map endpoint to its start/status/result paths
+  const base = endpointBase === '/api/fetch/reddit' ? '/api/fetch/reddit' : '/api/analyze';
+  const startPath = `${base}/start`;
+  const statusPath = `${base}/status?jobId=`;
+  const resultPath = `${base}/result?jobId=`;
+
+  const startRes = await fetch(startPath, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const { jobId } = await startRes.json();
+
+  for (let i = 0; i < 900; i++) { // 15 minutes max
+    await new Promise(r => setTimeout(r, 1000));
+    const statusRes = await fetch(`${statusPath}${jobId}`);
+    const status = await statusRes.json();
+    if (status.logs) status.logs.forEach((l: string) => onLog(l));
+    if (status.status === 'completed') {
+      const res = await fetch(`${resultPath}${jobId}`);
+      return await res.json();
+    }
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Background job failed');
+    }
+  }
+  throw new Error('Background job timed out');
 }
 
 // Legacy function for backward compatibility
