@@ -792,8 +792,27 @@ function extractTextFromHTML(html: string): string {
   return text;
 }
 
-export async function generateProductContext(product: { name: string; url?: string }): Promise<ContextPack> {
-  console.log('[generateProductContext] Generating context for:', product.name, product.url ? `(URL: ${product.url})` : '');
+/**
+ * Extract a readable product name from a URL
+ */
+function extractDomainFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    let domain = urlObj.hostname;
+    // Remove www. prefix
+    if (domain.startsWith('www.')) {
+      domain = domain.substring(4);
+    }
+    // Remove .com, .ai, etc. suffix for cleaner name
+    const parts = domain.split('.');
+    return parts[0] || domain;
+  } catch {
+    return 'Product';
+  }
+}
+
+export async function generateProductContext(product: { name?: string; url: string }): Promise<ContextPack> {
+  console.log('[generateProductContext] Generating context for:', product.name || 'product', `(URL: ${product.url})`);
   
   // If URL is provided, try to scrape it first
   if (product.url) {
@@ -815,15 +834,17 @@ export async function generateProductContext(product: { name: string; url?: stri
     }
   }
   
-  // Fallback to name-based context generation
-  const prompt = `You are a product research assistant. Generate a context summary for the product "${product.name}".
+  // Fallback to URL-based context generation
+  const productIdentifier = product.name || product.url;
+  const prompt = `You are a product research assistant. Generate a context summary for the product at "${product.url}"${product.name ? ` (${product.name})` : ''}.
 
 CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
 {"contextText": "brief description of what this product does, its key features and target audience", "keywords": ["keyword1", "keyword2", "keyword3"]}
 
 Do not include any other text, explanations, or markdown formatting. Just the JSON object.
 
-Product: ${product.name}`;
+Product URL: ${product.url}
+Product Name: ${product.name || 'Unknown - extract from URL'}`;
 
   const content = await callOpenAI([
     { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
@@ -832,9 +853,10 @@ Product: ${product.name}`;
 
   if (!content) {
     console.log('[generateProductContext] Using fallback context');
+    const productName = product.name || extractDomainFromUrl(product.url);
     return {
-      contextText: `${product.name} is a software product that provides solutions for users.`,
-      keywords: [product.name, product.name.toLowerCase()]
+      contextText: `${productName} is a software product that provides solutions for users.`,
+      keywords: [productName.toLowerCase(), 'software', 'product']
     };
   }
 
@@ -844,9 +866,10 @@ Product: ${product.name}`;
     // Check if content looks like JSON
     if (!cleanContent.startsWith('{')) {
       console.error('[generateProductContext] Response is not JSON object:', cleanContent.substring(0, 100));
+      const productName = product.name || extractDomainFromUrl(product.url);
       return {
-        contextText: `${product.name} is a software product that provides solutions for users.`,
-        keywords: [product.name, product.name.toLowerCase()]
+        contextText: `${productName} is a software product that provides solutions for users.`,
+        keywords: [productName.toLowerCase(), 'software', 'product']
       };
     }
     
@@ -855,9 +878,10 @@ Product: ${product.name}`;
     return result;
   } catch (error) {
     console.error('[generateProductContext] JSON parse failed:', error);
+    const productName = product.name || extractDomainFromUrl(product.url);
     return {
-      contextText: `${product.name} is a software product that provides solutions for users.`,
-      keywords: [product.name, product.name.toLowerCase()]
+      contextText: `${productName} is a software product that provides solutions for users.`,
+      keywords: [productName.toLowerCase(), 'software', 'product']
     };
   }
 }

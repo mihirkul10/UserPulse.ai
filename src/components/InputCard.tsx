@@ -33,12 +33,22 @@ interface InputCardProps {
   isLoading?: boolean;
 }
 
+// URL validation helper
+const isValidUrl = (url: string): boolean => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
   const [me, setMe] = useState<ProductProfile>({ name: '', url: '' });
   const [competitors, setCompetitors] = useState<ProductProfile[]>([
-    { name: '' },
-    { name: '' },
-    { name: '' },
+    { name: '', url: '' },
+    { name: '', url: '' },
+    { name: '', url: '' },
   ]);
   const [errors, setErrors] = useState<{ me?: string; competitors?: string[] }>({});
   const [touched, setTouched] = useState<{ me: boolean; competitors: boolean[] }>({
@@ -68,13 +78,24 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
   const validate = () => {
     const newErrors: typeof errors = {};
     
-    if (!me.name.trim()) {
-      newErrors.me = 'Your product name is required';
+    if (!me.url?.trim()) {
+      newErrors.me = 'Your product URL is required';
+    } else if (me.url && !isValidUrl(me.url)) {
+      newErrors.me = 'Please enter a valid URL (e.g., https://example.com)';
     }
     
     const competitorErrors: string[] = [];
-    if (!competitors[0].name.trim()) {
-      competitorErrors[0] = 'At least one competitor is required';
+    if (!competitors[0].url?.trim()) {
+      competitorErrors[0] = 'At least one competitor URL is required';
+    } else if (competitors[0].url && !isValidUrl(competitors[0].url)) {
+      competitorErrors[0] = 'Please enter a valid URL for competitor 1';
+    }
+    
+    // Validate other competitor URLs if provided
+    for (let i = 1; i < competitors.length; i++) {
+      if (competitors[i].url?.trim() && !isValidUrl(competitors[i].url!)) {
+        competitorErrors[i] = `Please enter a valid URL for competitor ${i + 1}`;
+      }
     }
     
     if (competitorErrors.length > 0) {
@@ -154,19 +175,19 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
           
           <Typography variant="body1" color="text.secondary" paragraph>
             Analyze feature launches, user feedback, and sentiment from 52 AI/ML/product/startup subreddits.
-            Use <strong>exact product names</strong> for the best results.
+            Provide <strong>product URLs</strong> for the most accurate context and search terms.
           </Typography>
           
           <Grid container spacing={3}>
             <Grid size={12}>
               <TextField
                 fullWidth
-                label="Your Product"
-                placeholder="Enter your product name"
+                label="Your Product URL"
+                placeholder="https://yourproduct.com"
                 required
-                value={me.name}
+                value={me.url || ''}
                 onChange={(e) => {
-                  setMe({ ...me, name: e.target.value });
+                  setMe({ ...me, url: e.target.value });
                   if (touched.me) validate();
                 }}
                 onBlur={() => {
@@ -176,13 +197,13 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                 error={touched.me && !!errors.me}
                 helperText={
                   touched.me && errors.me ? errors.me : 
-                  'Exact name (e.g., "Cursor", "GitHub Copilot")'
+                  'Website URL for automatic context extraction (e.g., "https://cursor.sh")'
                 }
                 inputRef={meInputRef}
                 InputProps={{
-                  'aria-label': 'Your product name',
+                  'aria-label': 'Your product URL',
                   'aria-required': true,
-                  'aria-describedby': 'your-product-helper',
+                  'aria-describedby': 'your-product-url-helper',
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -199,15 +220,15 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
             <Grid size={12}>
               <TextField
                 fullWidth
-                label="Your Product URL (Optional)"
-                placeholder="https://yourproduct.com"
-                value={me.url || ''}
+                label="Your Product Name (Optional)"
+                placeholder="Auto-extracted from URL or enter manually"
+                value={me.name}
                 onChange={(e) => {
-                  setMe({ ...me, url: e.target.value });
+                  setMe({ ...me, name: e.target.value });
                 }}
-                helperText="Provide URL for better context extraction (recommended)"
+                helperText="Will be auto-extracted from URL if not provided"
                 InputProps={{
-                  'aria-label': 'Your product URL',
+                  'aria-label': 'Your product name',
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -238,12 +259,13 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                     <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                       <TextField
                         fullWidth
-                        label={`Competitor ${index + 1}${index === 0 ? ' (required)' : ''}`}
+                        label={`Competitor ${index + 1} URL${index === 0 ? ' (required)' : ''}`}
                         required={index === 0}
-                        value={competitors[index].name}
+                        placeholder="https://competitor.com"
+                        value={competitors[index].url || ''}
                         onChange={(e) => {
                           const updated = [...competitors];
-                          updated[index] = { ...updated[index], name: e.target.value };
+                          updated[index] = { ...updated[index], url: e.target.value };
                           setCompetitors(updated);
                           if (touched.competitors[index]) validate();
                         }}
@@ -257,10 +279,10 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                         helperText={
                           touched.competitors[index] && errors.competitors?.[index] ? 
                           errors.competitors[index] : 
-                          'Exact names for best match'
+                          'Website URL for automatic context extraction'
                         }
                         InputProps={{
-                          'aria-label': `Competitor ${index + 1} name`,
+                          'aria-label': `Competitor ${index + 1} URL`,
                           'aria-required': index === 0,
                         }}
                       />
@@ -280,15 +302,15 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                       
                       <TextField
                         fullWidth
-                        label={`Competitor ${index + 1} URL (Optional)`}
-                        placeholder="https://competitor.com"
-                        value={competitors[index].url || ''}
+                        label={`Competitor ${index + 1} Name (Optional)`}
+                        placeholder="Auto-extracted from URL or enter manually"
+                        value={competitors[index].name}
                         onChange={(e) => {
                           const updated = [...competitors];
-                          updated[index] = { ...updated[index], url: e.target.value };
+                          updated[index] = { ...updated[index], name: e.target.value };
                           setCompetitors(updated);
                         }}
-                        helperText="URL for better context extraction"
+                        helperText="Will be auto-extracted from URL if not provided"
                         sx={{ mb: 2 }}
                       />
                       </Box>

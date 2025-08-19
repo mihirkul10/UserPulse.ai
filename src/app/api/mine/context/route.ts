@@ -7,8 +7,8 @@ import { z } from 'zod';
 import { generateProductContext } from '@/lib/openai';
 
 const ProductProfileSchema = z.object({
-  name: z.string().min(1),
-  url: z.string().optional(),
+  name: z.string().optional().or(z.literal('')),
+  url: z.string().min(1),
 });
 
 export async function POST(request: NextRequest) {
