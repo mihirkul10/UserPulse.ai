@@ -23,7 +23,7 @@ function getOpenAI() {
 async function callOpenAI(messages: any[], functionName: string) {
   try {
     const ai = getOpenAI();
-    const model = process.env.OPENAI_MODEL || 'gpt-4o';
+    const model = process.env.OPENAI_MODEL || 'gpt-5-nano-2025-08-07';
     
     console.log(`[${functionName}] Calling OpenAI with model: ${model}`);
     
@@ -33,12 +33,15 @@ async function callOpenAI(messages: any[], functionName: string) {
       messages: messages,
     };
     
-    // gpt-4o and gpt-4 use max_tokens, newer models might use max_completion_tokens
-    if (model.includes('gpt-4') || model.includes('gpt-3')) {
+    // Parameter compatibility per model family
+    if (model.startsWith('gpt-5-nano')) {
+      // gpt-5-nano requires max_completion_tokens and default temperature only
+      params.max_completion_tokens = 4000;
+    } else if (model.includes('gpt-4') || model.includes('gpt-3')) {
       params.max_tokens = 4000;
       params.temperature = 0.7;
     } else {
-      // For newer models that might not support temperature or use different token param
+      // Fallback: try completion tokens
       params.max_completion_tokens = 4000;
     }
     

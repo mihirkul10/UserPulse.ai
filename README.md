@@ -59,7 +59,7 @@ REDDIT_PASSWORD=your_reddit_password
 
 # OpenAI
 OPENAI_API_KEY=your_openai_api_key
-OPENAI_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5-nano-2025-08-07
 
 # Configuration
 DEFAULT_MIN_SCORE_REDDIT=0
@@ -83,7 +83,7 @@ Create a `.env.local` file with the following variables:
 | `REDDIT_USERNAME` | Reddit username | Yes |
 | `REDDIT_PASSWORD` | Reddit password | Yes |
 | `OPENAI_API_KEY` | OpenAI API key | Yes |
-| `OPENAI_MODEL` | OpenAI model (gpt-4o, gpt-4, or gpt-3.5-turbo) | No |
+| `OPENAI_MODEL` | OpenAI model (gpt-5-nano-2025-08-07 recommended; also supports gpt-4o) | No |
 | `DEFAULT_MIN_SCORE_REDDIT` | Minimum Reddit post score (default: 0) | No |
 
 ## Deployment

@@ -1,19 +1,19 @@
 # ⚠️ CRITICAL FIX APPLIED - OpenAI Model Configuration
 
 ## Problem Resolved
-The application was failing during report generation because the local `.env.local` file had `OPENAI_MODEL=gpt-5-nano` (a non-existent model) instead of `gpt-4o`.
+The application was failing during report generation because the local `.env.local` file had an incompatible model. We now support `gpt-5-nano-2025-08-07` (fast) and `gpt-4o` (high-capacity).
 
 ## What Was Fixed
 
 ### 1. Local Environment File
 **File**: `.env.local`
-**Changed**: `OPENAI_MODEL=gpt-5-nano` → `OPENAI_MODEL=gpt-4o`
+**Changed**: set `OPENAI_MODEL=gpt-5-nano-2025-08-07` by default for speed.
 
 ### 2. Vercel Environment
-Your Vercel environment is already correctly configured with `OPENAI_MODEL=gpt-4o`
+Your Vercel environment can be configured with either `gpt-5-nano-2025-08-07` (recommended for speed) or `gpt-4o`.
 
 ## Verification
-The application now correctly uses `gpt-4o`:
+The application now correctly detects and uses the configured model:
 ```
 [generateProductContext] Calling OpenAI with model: gpt-4o
 [generateProductContext] Successfully parsed context
