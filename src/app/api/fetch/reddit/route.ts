@@ -20,8 +20,8 @@ const RequestSchema = z.object({
     name: z.string(),
     url: z.string().optional(),
   })).min(0).max(3).default([]),  // Made optional with default empty array
-  days: z.number().default(30),
-  minScoreReddit: z.number().default(5),
+  days: z.number().default(90),
+  minScoreReddit: z.number().default(1),
   maxThreads: z.number().default(250),
   langs: z.array(z.string()).default(['en']),
   subreddits: z.array(z.string()),
@@ -97,8 +97,8 @@ async function searchRedditForCompetitor(
         for (const post of posts) {
           // Be more lenient with filtering to get more data
           if (post.created_utc < cutoffDate) continue;
-          // Accept posts with 0 score if they have comments (engagement)
-          if (post.score < input.minScoreReddit && post.num_comments < 3) continue;
+          // Accept posts with very low score if they have any engagement
+          if (post.score < input.minScoreReddit && post.num_comments < 1) continue;
           
           const evidenceUrls = extractUrls(post.selftext || '');
           
@@ -126,8 +126,8 @@ async function searchRedditForCompetitor(
               
               // Get more comments for richer insights
               for (const comment of comments.slice(0, 20)) {
-                // Accept all comments with any engagement
-                if (comment.score < 0) continue;
+                // Accept all comments except heavily downvoted ones
+                if (comment.score < -2) continue;
                 
                 const commentEvidenceUrls = extractUrls(comment.body || '');
                 

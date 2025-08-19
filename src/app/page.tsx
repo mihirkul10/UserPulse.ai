@@ -63,8 +63,8 @@ export default function Home() {
     const input: AnalyzeInput = {
       me,
       competitors,
-      days: 30,
-      minScoreReddit: 0,
+      days: 90,
+      minScoreReddit: 1,
       maxThreads: 250,
       langs: ['en'],
       subreddits: DEFAULT_SUBREDDITS,
