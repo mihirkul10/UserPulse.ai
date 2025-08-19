@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import pLimit from 'p-limit';
 import { UnifiedItem, AnalyzeInput, CoverageMeta, ContextPack, ReportSections } from './types';
 
 let openai: OpenAI | null = null;
@@ -451,91 +452,56 @@ export async function writeReportV2(
   input: AnalyzeInput,
   coverage: CoverageMeta
 ): Promise<string> {
-  const sys = REPORT_SYSTEM_PROMPT_V2;
-  const usr = buildUserPromptV2(unified, input, coverage);
-  const clarity = REPORT_FEW_SHOT_CLARITY;
+  console.log('[writeReportV2] Starting report generation (sectioned mode)...');
 
-  console.log('[writeReportV2] Starting report generation...');
-  
-  const content = await callOpenAI([
-    { role: "system", content: sys },
-    { role: "user", content: clarity },
-    { role: "user", content: usr }
-  ], 'writeReportV2');
+  // Build header first
+  const header = `# **Competitive Intelligence Report**\n\n---\n\n## **Your Product: ${input.me.name}**\n`;
 
-  if (content) {
-    console.log('[writeReportV2] Report generated successfully');
+  // Group items by product
+  const byProduct: Record<string, UnifiedItem[]> = {};
+  for (const it of unified) {
+    (byProduct[it.matchedCompetitor] ||= []).push(it);
+  }
+
+  const limit = pLimit(3); // control concurrency to avoid rate limits
+
+  async function generateSection(productName: string, items: UnifiedItem[]): Promise<string> {
+    const sys = REPORT_SYSTEM_PROMPT_V2;
+    const payload = buildUserPromptV2(items, { ...input, competitors: [{ name: productName }] } as any, coverage);
+    const clarity = REPORT_FEW_SHOT_CLARITY;
+    const content = await callOpenAI([
+      { role: 'system', content: sys },
+      { role: 'user', content: clarity },
+      { role: 'user', content: payload }
+    ], `section:${productName}`);
+    if (!content) {
+      // Minimal fallback for a single section
+      return `### **${productName}**\n• Unable to retrieve detailed section within time limit.\n`;
+    }
     return content;
   }
 
-  // Fallback report if OpenAI fails
-  console.log('[writeReportV2] Using fallback report due to API failure');
-  
-  const competitorNames = input.competitors.map(c => c.name).join(', ');
-  const subredditCount = new Set(unified.map(item => item.subreddit)).size;
-  
-  return `# **Competitive Intelligence Report**
+  const products = Array.from(new Set([input.me.name, ...input.competitors.map(c => c.name)])).filter(Boolean);
+  const sectionPromises = products.map(name => limit(() => generateSection(name, byProduct[name] || [])));
+  const sections = await Promise.all(sectionPromises);
 
----
+  // Generate strategic takeaways in a small separate call
+  const takeawaysPrompt = `DATA:\n${JSON.stringify({ products, coverage }, null, 2)}\n\nWrite a concise 'Strategic Takeaways' section (3 bullets) connecting themes across products.`;
+  const takeaways = await callOpenAI([
+    { role: 'system', content: 'You write concise, actionable strategy bullets.' },
+    { role: 'user', content: takeawaysPrompt }
+  ], 'takeaways');
 
-## **⚠️ Report Generation Issue**
+  const final = [
+    header,
+    '## **Competitor Analysis**',
+    '',
+    sections.join('\n\n---\n\n'),
+    '\n---\n',
+    takeaways ? takeaways : '## **💡 Strategic Takeaways**\n• Focus on recurring pain points.\n• Amplify strengths users praise.\n• Track competitor launches closely.'
+  ].join('\n');
 
-The AI report generation encountered an issue. This is typically due to one of the following:
-
-### **Possible Causes:**
-1. **OpenAI API Key Issue**: The API key may be invalid, expired, or not properly configured
-2. **Rate Limiting**: Too many requests in a short time period
-3. **Network Issues**: Connection problems to OpenAI servers
-4. **Model Availability**: The specified model (${process.env.OPENAI_MODEL || 'gpt-4o'}) may not be accessible
-
-### **📊 Data Successfully Collected**
-
-Despite the report generation issue, we successfully collected data:
-
-- **Total items analyzed**: ${unified.length}
-- **Time period**: ${input.days} days
-- **Your product**: ${input.me.name}
-- **Competitors tracked**: ${competitorNames}
-- **Subreddits covered**: ${subredditCount}
-- **Threads analyzed**: ${coverage.totalThreads}
-- **Comments analyzed**: ${coverage.totalComments}
-
-### **🔧 How to Fix This**
-
-1. **Verify OpenAI API Key**:
-   - Check that your API key is valid at [platform.openai.com](https://platform.openai.com)
-   - Ensure the key has sufficient credits/quota
-   - Verify the key is correctly set in Vercel environment variables
-
-2. **Try Again With Smaller Scope**:
-   - Reduce time period to 7 days
-   - Analyze 1-2 competitors at a time
-   - This reduces API load and increases success rate
-
-3. **Check Vercel Logs**:
-   - Go to your Vercel dashboard
-   - Click on "Functions" tab
-   - Look for detailed error messages in the logs
-
-### **📋 Sample Data Collected**
-
-Here are some of the Reddit discussions we found about your competitors:
-
-${unified.slice(0, 5).map(item => 
-`**${item.matchedCompetitor}** (r/${item.subreddit}, score: ${item.score})
-"${item.title_or_text.substring(0, 150)}..."
-[View on Reddit](${item.thread_url})
-`).join('\n---\n')}
-
-### **💡 Next Steps**
-
-1. Fix the OpenAI API configuration issue
-2. Redeploy to Vercel with updated environment variables
-3. Try the analysis again with a smaller scope
-
----
-
-*This fallback report was generated because the AI analysis could not complete. The data collection was successful, but report generation failed.*`;
+  return final;
 }
 
 export async function writeReport(
