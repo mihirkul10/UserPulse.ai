@@ -11,12 +11,15 @@ import { AnalyzeInput, RawItem } from '@/lib/types';
 import { generateEntityResolution, filterForRelevance } from '@/lib/openai';
 
 const RequestSchema = z.object({
+  target: z.enum(['me', 'competitors']).optional(),
   me: z.object({
     name: z.string(),
+    url: z.string().optional(),
   }),
   competitors: z.array(z.object({
     name: z.string(),
-  })).min(1).max(3),
+    url: z.string().optional(),
+  })).min(0).max(3).default([]),  // Made optional with default empty array
   days: z.number().default(30),
   minScoreReddit: z.number().default(5),
   maxThreads: z.number().default(250),
@@ -185,10 +188,21 @@ export async function POST(request: NextRequest) {
     const reddit = initReddit();
     const allItems: RawItem[] = [];
     
-    // Search for each competitor
-    for (const competitor of input.competitors) {
-      const competitorItems = await searchRedditForCompetitor(reddit, competitor, input);
-      allItems.push(...competitorItems);
+    // Determine what to search for based on target
+    const target = input.target || 'both';
+    
+    if (target === 'me' || target === 'both') {
+      // Search for the founder's product (me)
+      const meItems = await searchRedditForCompetitor(reddit, input.me, input);
+      allItems.push(...meItems);
+    }
+    
+    if (target === 'competitors' || target === 'both') {
+      // Search for each competitor
+      for (const competitor of input.competitors) {
+        const competitorItems = await searchRedditForCompetitor(reddit, competitor, input);
+        allItems.push(...competitorItems);
+      }
     }
     
     // Sort by score and recency
