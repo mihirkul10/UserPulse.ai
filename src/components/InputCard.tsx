@@ -88,16 +88,13 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
     }
     
     const competitorErrors: string[] = [];
-    // Require either URL or name for first competitor
-    if (!competitors[0].url?.trim() && !competitors[0].name?.trim()) {
-      competitorErrors[0] = 'Please provide either a URL or name for at least one competitor';
-    } else if (competitors[0].url?.trim() && !isValidUrl(competitors[0].url)) {
-      competitorErrors[0] = 'Please enter a valid URL for competitor 1';
-    }
-    
-    // Validate other competitor URLs if provided
-    for (let i = 1; i < competitors.length; i++) {
-      if (competitors[i].url?.trim() && !isValidUrl(competitors[i].url!)) {
+    // Validate competitors - require both name and URL for all active competitors
+    for (let i = 0; i < competitorCount; i++) {
+      if (!competitors[i].name?.trim()) {
+        competitorErrors[i] = `Competitor ${i + 1} name is required`;
+      } else if (!competitors[i].url?.trim()) {
+        competitorErrors[i] = `Competitor ${i + 1} URL is required`;
+      } else if (!isValidUrl(competitors[i].url)) {
         competitorErrors[i] = `Please enter a valid URL for competitor ${i + 1}`;
       }
     }
@@ -143,7 +140,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
 
   const removeCompetitor = (index: number) => {
     const updated = [...competitors];
-    updated[index] = { name: '' };
+    updated[index] = { name: '', url: '' };
     setCompetitors(updated);
     if (index === competitorCount - 1 && competitorCount > 1) {
       setCompetitorCount(competitorCount - 1);
@@ -267,63 +264,99 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
               
                                 <Box>
                     {[0, 1, 2].slice(0, competitorCount).map((index) => (
-                      <Box key={index}>
-                    <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                      <TextField
-                        fullWidth
-                                        label={`Competitor ${index + 1} URL${index === 0 ? ' (Recommended)' : ''}`}
-                placeholder="https://competitor.com"
-                        value={competitors[index].url || ''}
-                        onChange={(e) => {
-                          const updated = [...competitors];
-                          updated[index] = { ...updated[index], url: e.target.value };
-                          setCompetitors(updated);
-                          if (touched.competitors[index]) validate();
-                        }}
-                        onBlur={() => {
-                          const newTouched = [...touched.competitors];
-                          newTouched[index] = true;
-                          setTouched(prev => ({ ...prev, competitors: newTouched }));
-                          validate();
-                        }}
-                        error={touched.competitors[index] && !!errors.competitors?.[index]}
-                        helperText={
-                          touched.competitors[index] && errors.competitors?.[index] ? 
-                          errors.competitors[index] : 
-                          'Website URL for automatic context extraction'
-                        }
-                        InputProps={{
-                          'aria-label': `Competitor ${index + 1} URL`,
-                          'aria-required': index === 0,
-                        }}
-                      />
-                      {index > 0 && (
-                        <Tooltip title="Remove competitor">
-                          <IconButton
-                            onClick={() => removeCompetitor(index)}
-                            size="small"
-                            sx={{ mt: 1 }}
-                            aria-label={`Remove competitor ${index + 1}`}
-                          >
-                            <Remove />
-                          </IconButton>
-                        </Tooltip>
-                                              )}
-                      </Box>
-                      
-                      <TextField
-                        fullWidth
-                        label={`Competitor ${index + 1} Name`}
-                        placeholder="Enter competitor name"
-                        value={competitors[index].name}
-                        onChange={(e) => {
-                          const updated = [...competitors];
-                          updated[index] = { ...updated[index], name: e.target.value };
-                          setCompetitors(updated);
-                        }}
-                        helperText="Will be auto-extracted from URL if not provided"
-                        sx={{ mb: 2 }}
-                      />
+                      <Box key={index} sx={{ mb: 3 }}>
+                        <Grid container spacing={2} alignItems="flex-start">
+                          <Grid size={{ xs: 12, md: 5 }}>
+                            <TextField
+                              fullWidth
+                              label={`Competitor ${index + 1} Name`}
+                              placeholder="e.g., ChatGPT, Claude, Gemini"
+                              value={competitors[index].name}
+                              onChange={(e) => {
+                                const updated = [...competitors];
+                                updated[index] = { ...updated[index], name: e.target.value };
+                                setCompetitors(updated);
+                                if (touched.competitors[index]) validate();
+                              }}
+                              onBlur={() => {
+                                const newTouched = [...touched.competitors];
+                                newTouched[index] = true;
+                                setTouched(prev => ({ ...prev, competitors: newTouched }));
+                                validate();
+                              }}
+                              error={touched.competitors[index] && !!errors.competitors?.[index]}
+                              helperText={
+                                touched.competitors[index] && errors.competitors?.[index] ? 
+                                errors.competitors[index] : 
+                                'The name users know this product by'
+                              }
+                              required
+                              InputProps={{
+                                'aria-label': `Competitor ${index + 1} name`,
+                                'aria-required': true,
+                              }}
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  transition: 'all 0.2s',
+                                  '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: (theme) => `0 4px 12px ${theme.palette.primary.main}20`,
+                                  },
+                                },
+                              }}
+                            />
+                          </Grid>
+                          <Grid size={{ xs: 12, md: 5 }}>
+                            <TextField
+                              fullWidth
+                              label={`Competitor ${index + 1} URL`}
+                              placeholder="https://competitor.com"
+                              value={competitors[index].url || ''}
+                              onChange={(e) => {
+                                const updated = [...competitors];
+                                updated[index] = { ...updated[index], url: e.target.value };
+                                setCompetitors(updated);
+                                if (touched.competitors[index]) validate();
+                              }}
+                              onBlur={() => {
+                                const newTouched = [...touched.competitors];
+                                newTouched[index] = true;
+                                setTouched(prev => ({ ...prev, competitors: newTouched }));
+                                validate();
+                              }}
+                              error={touched.competitors[index] && !!errors.competitors?.[index]}
+                              helperText='Website URL for context extraction'
+                              required
+                              InputProps={{
+                                'aria-label': `Competitor ${index + 1} URL`,
+                                'aria-required': true,
+                              }}
+                              sx={{
+                                '& .MuiOutlinedInput-root': {
+                                  transition: 'all 0.2s',
+                                  '&.Mui-focused': {
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: (theme) => `0 4px 12px ${theme.palette.primary.main}20`,
+                                  },
+                                },
+                              }}
+                            />
+                          </Grid>
+                          {index > 0 && (
+                            <Grid size={{ xs: 12, md: 2 }}>
+                              <Tooltip title="Remove competitor">
+                                <IconButton
+                                  onClick={() => removeCompetitor(index)}
+                                  size="small"
+                                  sx={{ mt: 1 }}
+                                  aria-label={`Remove competitor ${index + 1}`}
+                                >
+                                  <Remove />
+                                </IconButton>
+                              </Tooltip>
+                            </Grid>
+                          )}
+                        </Grid>
                       </Box>
                     ))}
                   </Box>

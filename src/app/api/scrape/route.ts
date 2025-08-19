@@ -130,3 +130,4 @@ function extractTextFromHTML(html: string): string {
   
   return text;
 }
+

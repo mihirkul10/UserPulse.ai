@@ -140,3 +140,4 @@ export default function HistoryDrawer({ open, onClose, onLoadReport }: HistoryDr
     </Drawer>
   );
 }
+

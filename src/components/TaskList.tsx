@@ -67,3 +67,4 @@ export const DEFAULT_TASKS: Task[] = [
   { id: 'compose', label: 'Compose markdown' },
   { id: 'csv', label: 'Assemble CSV appendix' },
 ];
+

@@ -437,3 +437,4 @@ export const createAppTheme = (mode: 'light' | 'dark') => {
 };
 
 export { tokens };
+

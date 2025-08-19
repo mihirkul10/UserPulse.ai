@@ -48,3 +48,4 @@ export function clearAllReports(): void {
   
   localStorage.removeItem(STORAGE_KEY);
 }
+
