@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const maxDuration = 60; // ask Vercel for the plan’s max (Pro = 60s)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
