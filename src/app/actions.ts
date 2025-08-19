@@ -84,16 +84,39 @@ export async function runAnalysisWithStreaming(
     
     const allItems = [...mineMe, ...mineCompetitors];
 
-    // Try server analysis first; if it fails, synthesize a local report so we never crash
+    // Submit background job to avoid Vercel timeouts
+    onLog('[System] Submitting background job for report generation...');
+    const startRes = await fetch('/api/analyze/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: allItems, input, meContext }),
+    });
+    const { jobId } = await startRes.json();
+    onLog(`[System] Job started: ${jobId}`);
+
+    // Poll status until complete
     let result: AnalysisResult | null = null;
-    try {
-      result = await streamCall('/api/analyze', {
-        items: allItems,
-        input,
-        meContext,
-      }, onLog) as AnalysisResult;
-    } catch (serverErr) {
-      onLog(`[Writer] ⚠️ Server analysis failed. Falling back to local heuristic report.`);
+    let lastProgress = 0;
+    for (let i = 0; i < 600; i++) { // up to 10 minutes with 1s interval
+      await new Promise(r => setTimeout(r, 1000));
+      const statusRes = await fetch(`/api/analyze/status?jobId=${jobId}`);
+      const status = await statusRes.json();
+      if (status.logs) status.logs.forEach((l: string) => onLog(l));
+      if (typeof status.progress === 'number' && status.progress !== lastProgress) {
+        lastProgress = status.progress;
+        onProgress({ percentage: Math.max(lastProgress, 90), taskIndex: 5 });
+      }
+      if (status.status === 'completed') {
+        const res = await fetch(`/api/analyze/result?jobId=${jobId}`);
+        result = await res.json();
+        break;
+      }
+      if (status.status === 'failed') {
+        throw new Error(status.error || 'Background job failed');
+      }
+    }
+    if (!result) {
+      onLog('[System] Background job took too long, returning local fallback.');
       result = buildLocalFallbackReport(allItems, input, meContext, onLog);
     }
     
