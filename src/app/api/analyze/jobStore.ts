@@ -12,7 +12,12 @@ export interface JobState {
   updatedAt: number;
 }
 
-const jobs = new Map<string, JobState>();
+// Ensure a single shared store across route modules/instances in the same process
+const g = globalThis as any;
+if (!g.__USERPULSE_JOB_STORE__) {
+  g.__USERPULSE_JOB_STORE__ = new Map<string, JobState>();
+}
+const jobs: Map<string, JobState> = g.__USERPULSE_JOB_STORE__;
 
 export function createJob(id: string): JobState {
   const state: JobState = {
