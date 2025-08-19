@@ -153,7 +153,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
           </Box>
           
           <Typography variant="body1" color="text.secondary" paragraph>
-            Analyze feature launches, user feedback, and sentiment from top AI/ML/product subreddits.
+            Analyze feature launches, user feedback, and sentiment from 52 AI/ML/product/startup subreddits.
             Use <strong>exact product names</strong> for the best results.
           </Typography>
           
