@@ -306,6 +306,7 @@ async function runBackgroundJob(
   let lastKey = '';
   let lastEmitTs = 0;
   let lastProgressEmitted = -1;
+  let bgShown = false;
   for (let i = 0; i < 900; i++) { // 15 minutes max
     await new Promise(r => setTimeout(r, 1000));
     const statusRes = await fetch(`${statusPath}${jobId}`);
@@ -313,8 +314,9 @@ async function runBackgroundJob(
     // Controlled logging: emit only on meaningful changes
     if (status.logs && status.logs.length > 0) {
       const latest = status.logs[status.logs.length - 1] as string;
+      const isBg = /Background analysis started/i.test(latest);
       const key =
-        /Background analysis started/i.test(latest) ? 'bg' :
+        isBg ? 'bg' :
         /Classifying/i.test(latest) ? 'classify' :
         /Generating report|Writer/i.test(latest) ? 'writer' :
         latest;
@@ -323,12 +325,16 @@ async function runBackgroundJob(
       const progressBump = progress >= lastProgressEmitted + 10; // every 10%
       const keyChanged = key !== lastKey;
       const timeElapsed = now - lastEmitTs > 8000; // every 8s max if same key
-      if ((keyChanged || progressBump || timeElapsed) && latest !== lastLogSent) {
+      // Show BG started only once
+      if (isBg && bgShown) {
+        // skip
+      } else if (((keyChanged && (now - lastEmitTs > 4000)) || progressBump || timeElapsed) && latest !== lastLogSent) {
         onLog(latest);
         lastLogSent = latest;
         lastKey = key;
         lastEmitTs = now;
         if (progressBump) lastProgressEmitted = progress;
+        if (isBg) bgShown = true;
       }
     }
     if (status.status === 'completed') {
