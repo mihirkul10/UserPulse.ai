@@ -34,7 +34,7 @@ async function callOpenAI(messages: any[], functionName: string) {
     };
     
     // Always use standard parameters for GPT-4o
-    params.max_tokens = 4000;
+    params.max_tokens = 2000;
     params.temperature = 0.7;
     
     console.log(`[${functionName}] Request params:`, JSON.stringify({
@@ -343,100 +343,67 @@ EXAMPLE (structure, tone, and formatting):
 
 // New: Section-only system prompt to avoid meta responses and ensure strict output
 export const REPORT_SECTION_SYSTEM_PROMPT = `
-You are a competitive intelligence analyst writing ONE product section of a report based on Reddit discussions.
+Write a brief product analysis from Reddit posts. Be concise.
 
-CRITICAL RULES:
-1. Analyze the provided Reddit posts and extract REAL insights - DO NOT use placeholder text
-2. If data is limited, still extract what you can from available posts
-3. Every claim MUST be backed by the provided Reddit posts with [ref](url) links
-4. Write in professional, analytical tone - no marketing fluff
-5. Focus on the most upvoted/discussed items (higher score = more important)
-
-Required output format:
-
+Format:
 ### **{Product Name}**
 
-#### **🚀 New Updates**
-• **{Actual feature or update}** *(launched {date if mentioned})*
-  {2-3 sentences describing the update based on Reddit discussions}
-  [ref](actual_reddit_url) | [ref](actual_reddit_url)
+#### **🚀 Updates**
+• **{Feature}** - {Brief description} [ref](url)
 
-#### **💚 What Users Love**  
-• **{Actual feature users praise}**
-  {Why users love it, with specific examples from posts}
-  *"{Actual quote if available}"* - r/{subreddit}
-  [ref](actual_reddit_url) | [ref](actual_reddit_url)
+#### **💚 Positives**
+• **{What users like}** - {Why} [ref](url)
 
-#### **⚠️ What Users Dislike**
-• **{Actual problem users complain about}**
-  {Severity and context from discussions}
-  [ref](actual_reddit_url) | [ref](actual_reddit_url)
+#### **⚠️ Issues** 
+• **{Problem}** - {Impact} [ref](url)
 
-If a section has NO data, write: "(No {updates/praise/complaints} found in recent discussions)"
+Rules:
+- Use ONLY provided Reddit data
+- Include [ref](url) for claims
+- If no data: "(Limited discussions)"
+- Keep under 2 sentences per point
 `;
 
 // Founder-specific prompt for analyzing your own product
 export const FOUNDER_SECTION_SYSTEM_PROMPT = `
-You are analyzing Reddit discussions about the FOUNDER'S OWN PRODUCT to provide insights on user perception.
+Analyze Reddit discussions about the founder's product. Provide actionable insights.
 
-CRITICAL RULES:
-1. Extract REAL user feedback from Reddit posts - both positive and negative
-2. Be honest about problems users face - founders need truth, not flattery
-3. Highlight opportunities based on what users are asking for
-4. Every insight must link to actual Reddit discussions
-
-Required output format:
-
+Format:
 ## **Your Product: {Product Name}**
 
-### **📊 User Sentiment Analysis**
+### **📊 User Sentiment**
 
-#### **💚 What Users Appreciate**
-• **{Feature/aspect users like}**
-  {Why they value it, with examples}
-  *"{Quote if available}"* - r/{subreddit}
-  [ref](url) | [ref](url)
+#### **💚 Positives**
+• **{Feature}** - {User feedback} [ref](url)
 
-#### **🔧 Pain Points & Issues**
-• **{Problem users face}**
-  {Impact and frequency based on discussions}
-  Users suggest: {what they want instead}
-  [ref](url) | [ref](url)
+#### **🔧 Issues**
+• **{Problem}** - {User impact} [ref](url)
 
-#### **🎯 Feature Requests & Opportunities**
-• **{What users are asking for}**
-  {Why they want it and potential impact}
-  [ref](url) | [ref](url)
+#### **🎯 Opportunities**
+• **{Request/Gap}** - {Potential} [ref](url)
 
-If limited data: "(Limited Reddit discussions found - consider monitoring these communities: r/startups, r/SaaS, etc.)"
+Rules:
+- Extract real data only
+- Include quotes when impactful
+- Keep concise
+- If limited: "(Consider monitoring r/startups, r/SaaS)"
 `;
 
 function buildSectionUserPrompt(productName: string, items: UnifiedItem[]) {
-  const posts = items.slice(0, 60).map(it => ({
-    type: it.type,
-    aspect: it.aspect ?? 'general',
-    subreddit: it.subreddit,
-    score: it.score,
-    num_comments: it.num_comments ?? 0,
-    dateUTC: it.created_at,
-    title_or_text: (it.title_or_text || '').slice(0, 400),
-    permalink: it.thread_url,
-    outbound_urls: it.evidence_urls?.slice(0, 4) || []
-  }));
+  // Take top 15 highest-scored items for efficiency
+  const posts = items
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 15)
+    .map(it => ({
+      subreddit: it.subreddit,
+      score: it.score,
+      text: (it.title_or_text || '').slice(0, 150),
+      url: it.thread_url
+    }));
 
-  // Group posts by content type for easier analysis
-  const updates = posts.filter(p => p.title_or_text.toLowerCase().includes('update') || p.title_or_text.toLowerCase().includes('release') || p.title_or_text.toLowerCase().includes('launch'));
-  const positive = posts.filter(p => p.aspect?.includes('positive') || p.aspect?.includes('praise'));
-  const negative = posts.filter(p => p.aspect?.includes('negative') || p.aspect?.includes('complaint'));
-
-  return `
-PRODUCT TO ANALYZE: ${productName}
-
-REDDIT POSTS DATA:
-${JSON.stringify({ 
-  product: productName,
-  total_posts: posts.length,
-  updates: updates.length,
+  return `Product: ${productName}
+Top posts:
+${JSON.stringify(posts)}
   positive_mentions: positive.length,
   negative_mentions: negative.length,
   all_posts: posts 
@@ -584,7 +551,7 @@ export async function writeReportV2(
   
   console.log('[writeReportV2] Items by product:', Object.entries(byProduct).map(([k,v]) => `${k}: ${v.length}`));
 
-  const limit = pLimit(3); // control concurrency to avoid rate limits
+  const limit = pLimit(2); // reduced concurrency for faster responses
 
   async function generateSection(productName: string, items: UnifiedItem[], isFounder: boolean = false): Promise<string> {
     console.log(`[generateSection] Generating for ${productName}, items: ${items.length}, isFounder: ${isFounder}`);
@@ -620,39 +587,17 @@ export async function writeReportV2(
   const competitorItems = competitors.flatMap(c => byProduct[c] || []);
   
   const takeawaysPrompt = `
-ANALYZED DATA SUMMARY:
-${JSON.stringify({
-  founder_product: {
-    name: input.me.name,
-    mentions: founderItems.length,
-    top_aspects: founderItems.slice(0, 5).map(i => ({ aspect: i.aspect, score: i.score }))
-  },
-  competitors: competitors.map(c => ({
-    name: c,
-    mentions: (byProduct[c] || []).length,
-    top_aspects: (byProduct[c] || []).slice(0, 3).map(i => ({ aspect: i.aspect, score: i.score }))
-  })),
-  total_posts_analyzed: unified.length,
-  subreddits_covered: coverage.subredditsUsed,
-  time_period: coverage.days + ' days'
-}, null, 2)}
+Data: ${input.me.name} (${founderItems.length} mentions), Competitors: ${competitors.map(c => `${c} (${(byProduct[c] || []).length})`).join(', ')}
 
-Based on the Reddit analysis above, generate 3 SPECIFIC, ACTIONABLE strategic recommendations:
+Generate brief strategic takeaways:
 
-1. **Competitive Advantage**: What should ${input.me.name} do differently based on competitor weaknesses?
-2. **Feature Priority**: What feature/improvement would have the biggest impact based on user feedback?
-3. **Market Opportunity**: What unmet need or gap exists that ${input.me.name} could address?
-
-Format each as:
 ## **💡 Strategic Takeaways for ${input.me.name}**
 
-• **[Specific Action Title]**: [2-3 sentences explaining WHY this matters based on the data, and HOW to execute it]
+• **Competitive Edge**: [Action based on competitor weakness]
+• **User Priority**: [Feature to address top complaint] 
+• **Market Gap**: [Opportunity to exploit]
 
-• **[Specific Action Title]**: [2-3 sentences with concrete next steps based on user feedback patterns]
-
-• **[Specific Action Title]**: [2-3 sentences with measurable opportunity based on market gaps]
-
-Be SPECIFIC - mention actual products, features, and user complaints from the data. NO generic advice.`;
+Keep concise and specific.`;
   
   const takeaways = await callOpenAI([
     { role: 'system', content: `You are a strategic advisor helping ${input.me.name} beat their competition. Give specific, actionable advice based on Reddit user feedback.` },
