@@ -339,6 +339,46 @@ EXAMPLE (structure, tone, and formatting):
   [ref](https://reddit.com/r/programming/comments/ccc) | [ref](https://reddit.com/r/startups/comments/ddd) | [ref](https://reddit.com/r/learnprogramming/comments/eee)
 `;
 
+// System prompt for generating ONLY a single competitor section
+export const REPORT_SECTION_SYSTEM = (
+  productName: string,
+) => `You are composing ONE section of a competitive intelligence report.
+
+Write ONLY the section for ${productName}. Do not include the global report header, "Your Product" section, or strategic takeaways. Do not repeat other competitors.
+
+FORMAT EXACTLY:
+
+### **${productName}**
+
+#### **🚀 New Updates**
+• [Bullet with 2–3 sentences and refs]
+
+#### **💚 What Users Love**
+• [Bullet with 2–3 sentences and refs]
+
+#### **⚠️ What Users Dislike**
+• [Bullet with 2–3 sentences and refs]
+
+Rules:
+- Use [ref](url) links from the provided items.
+- No top-level headings, no summary, no takeaways. Only this competitor's section.`;
+
+function buildSectionPrompt(productName: string, items: UnifiedItem[]) {
+  const payload = {
+    product: productName,
+    items: items.slice(0, 80).map(i => ({
+      type: i.type,
+      subreddit: i.subreddit,
+      score: i.score,
+      dateUTC: i.created_at,
+      text: i.title_or_text?.slice(0, 400),
+      permalink: i.thread_url,
+      outbound_urls: i.evidence_urls?.slice(0, 4)
+    }))
+  };
+  return `DATA (JSON):\n${JSON.stringify(payload, null, 2)}\n\nWrite the section described above for ${productName}.`;
+}
+
 export function buildUserPromptV2(
   unified: UnifiedItem[],
   input: AnalyzeInput,
@@ -469,12 +509,11 @@ export async function writeReportV2(
   const limit = pLimit(3); // control concurrency to avoid rate limits
 
   async function generateSection(productName: string, items: UnifiedItem[]): Promise<string> {
-    const sys = REPORT_SYSTEM_PROMPT_V2;
-    const payload = buildUserPromptV2(items, { ...input, competitors: [{ name: productName }] } as any, coverage);
-    const clarity = REPORT_FEW_SHOT_CLARITY;
+    const sys = REPORT_SECTION_SYSTEM(productName);
+    const payload = buildSectionPrompt(productName, items);
+    const clarity = undefined;
     const content = await callOpenAI([
       { role: 'system', content: sys },
-      { role: 'user', content: clarity },
       { role: 'user', content: payload }
     ], `section:${productName}`);
     if (!content) {
