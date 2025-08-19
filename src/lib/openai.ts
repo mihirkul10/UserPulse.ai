@@ -340,28 +340,55 @@ EXAMPLE (structure, tone, and formatting):
 `;
 
 // System prompt for generating ONLY a single competitor section
-export const REPORT_SECTION_SYSTEM = (
+export const REPORT_SECTION_SYSTEM_COMPETITOR = (
   productName: string,
-) => `You are composing ONE section of a competitive intelligence report.
+) => `You are composing ONE competitor section of a competitive intelligence report.
 
-Write ONLY the section for ${productName}. Do not include the global report header, "Your Product" section, or strategic takeaways. Do not repeat other competitors.
+Write ONLY the section for ${productName}. Do not include the global report header or other products.
 
 FORMAT EXACTLY:
 
-### **${productName}**
+### **What users are saying about ${productName}**
 
-#### **🚀 New Updates**
-• [Bullet with 2–3 sentences and refs]
+#### **New features launched**
+• [2–3 sentences per bullet, summarizing the feature and user reaction]
+  [ref](url) | [ref](url)
 
-#### **💚 What Users Love**
-• [Bullet with 2–3 sentences and refs]
+#### **What users love**
+• [2–3 sentences explaining WHY users love it, include short quote if helpful]
+  [ref](url) | [ref](url)
 
-#### **⚠️ What Users Dislike**
-• [Bullet with 2–3 sentences and refs]
+#### **What users don’t love**
+• [2–3 sentences explaining a concrete pain point with context/frequency]
+  [ref](url) | [ref](url)
 
 Rules:
-- Use [ref](url) links from the provided items.
-- No top-level headings, no summary, no takeaways. Only this competitor's section.`;
+- Use [ref](url) links from the provided items. Each bullet must include at least one ref.
+- Be richly detailed; reference the subreddit and sentiment when helpful.
+- No extra headers or sections beyond the format above.`;
+
+export const REPORT_SECTION_SYSTEM_FOUNDER = (
+  productName: string,
+) => `You are composing the founder’s product section of a competitive intelligence report.
+
+Write ONLY the section for ${productName}.
+
+FORMAT EXACTLY:
+
+### **What users are saying about ${productName}**
+
+#### **What they love**
+• [2–3 sentences per bullet with WHY; include short quote if useful]
+  [ref](url) | [ref](url)
+
+#### **What they don’t love**
+• [2–3 sentences per bullet with context/frequency and impact]
+  [ref](url) | [ref](url)
+
+Rules:
+- Use [ref](url) links from the provided items. Each bullet must include at least one ref.
+- Be richly detailed; reference the subreddit and sentiment when helpful.
+- No extra headers or sections beyond the format above.`;
 
 function buildSectionPrompt(productName: string, items: UnifiedItem[]) {
   const payload = {
@@ -498,7 +525,8 @@ export async function writeReportV2(
   console.log('[writeReportV2] Starting report generation (sectioned mode)...');
 
   // Build header first
-  const header = `# **Competitive Intelligence Report**\n\n---\n\n## **Your Product: ${input.me.name}**\n`;
+  const titleLine = `${input.me.name} vs ${input.competitors.map(c => c.name).join(' vs ')}`;
+  const header = `# **Competitive Intelligence Report: ${titleLine}**\n\n---`;
 
   // Group items by product
   const byProduct: Record<string, UnifiedItem[]> = {};
@@ -508,27 +536,42 @@ export async function writeReportV2(
 
   const limit = pLimit(3); // control concurrency to avoid rate limits
 
-  async function generateSection(productName: string, items: UnifiedItem[]): Promise<string> {
-    const sys = REPORT_SECTION_SYSTEM(productName);
+  async function generateCompetitorSection(productName: string, items: UnifiedItem[]): Promise<string> {
+    const sys = REPORT_SECTION_SYSTEM_COMPETITOR(productName);
     const payload = buildSectionPrompt(productName, items);
-    const clarity = undefined;
     const content = await callOpenAI([
       { role: 'system', content: sys },
       { role: 'user', content: payload }
-    ], `section:${productName}`);
+    ], `section_competitor:${productName}`);
     if (!content) {
-      // Minimal fallback for a single section
-      return `### **${productName}**\n• Unable to retrieve detailed section within time limit.\n`;
+      return `### **What users are saying about ${productName}**\n• Unable to retrieve detailed section within time limit.\n`;
     }
     return content;
   }
 
-  const products = Array.from(new Set([input.me.name, ...input.competitors.map(c => c.name)])).filter(Boolean);
-  const sectionPromises = products.map(name => limit(() => generateSection(name, byProduct[name] || [])));
-  const sections = await Promise.all(sectionPromises);
+  async function generateFounderSection(productName: string, items: UnifiedItem[]): Promise<string> {
+    const sys = REPORT_SECTION_SYSTEM_FOUNDER(productName);
+    const payload = buildSectionPrompt(productName, items);
+    const content = await callOpenAI([
+      { role: 'system', content: sys },
+      { role: 'user', content: payload }
+    ], `section_founder:${productName}`);
+    if (!content) {
+      return `### **What users are saying about ${productName}**\n• Unable to retrieve detailed section within time limit.\n`;
+    }
+    return content;
+  }
+
+  // Founder section (love / don’t love)
+  const founderSectionPromise = limit(() => generateFounderSection(input.me.name, byProduct[input.me.name] || []));
+  // Competitor sections (new features / love / don’t love)
+  const competitorNames = input.competitors.map(c => c.name).filter(Boolean);
+  const sectionPromises = competitorNames.map(name => limit(() => generateCompetitorSection(name, byProduct[name] || [])));
+  const sections = await Promise.all([founderSectionPromise, ...sectionPromises]);
 
   // Generate strategic takeaways in a small separate call
-  const takeawaysPrompt = `DATA:\n${JSON.stringify({ products, coverage }, null, 2)}\n\nWrite a concise 'Strategic Takeaways' section (3 bullets) connecting themes across products.`;
+  const products = [input.me.name, ...competitorNames];
+  const takeawaysPrompt = `DATA:\n${JSON.stringify({ products, coverage }, null, 2)}\n\nWrite a concise 'Takeaways for you' section (3–5 bullets) comparing ${input.me.name} against competitors and highlighting insights from user feedback.`;
   const takeaways = await callOpenAI([
     { role: 'system', content: 'You write concise, actionable strategy bullets.' },
     { role: 'user', content: takeawaysPrompt }
