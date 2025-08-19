@@ -78,16 +78,18 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
   const validate = () => {
     const newErrors: typeof errors = {};
     
-    if (!me.url?.trim()) {
-      newErrors.me = 'Your product URL is required';
-    } else if (me.url && !isValidUrl(me.url)) {
+    // Require either URL or name for main product
+    if (!me.url?.trim() && !me.name?.trim()) {
+      newErrors.me = 'Please provide either a URL or product name';
+    } else if (me.url?.trim() && !isValidUrl(me.url)) {
       newErrors.me = 'Please enter a valid URL (e.g., https://example.com)';
     }
     
     const competitorErrors: string[] = [];
-    if (!competitors[0].url?.trim()) {
-      competitorErrors[0] = 'At least one competitor URL is required';
-    } else if (competitors[0].url && !isValidUrl(competitors[0].url)) {
+    // Require either URL or name for first competitor
+    if (!competitors[0].url?.trim() && !competitors[0].name?.trim()) {
+      competitorErrors[0] = 'Please provide either a URL or name for at least one competitor';
+    } else if (competitors[0].url?.trim() && !isValidUrl(competitors[0].url)) {
       competitorErrors[0] = 'Please enter a valid URL for competitor 1';
     }
     
@@ -175,16 +177,15 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
           
           <Typography variant="body1" color="text.secondary" paragraph>
             Analyze feature launches, user feedback, and sentiment from 52 AI/ML/product/startup subreddits.
-            Provide <strong>product URLs</strong> for the most accurate context and search terms.
+            Provide <strong>product URLs for best results</strong> or use exact product names.
           </Typography>
           
           <Grid container spacing={3}>
             <Grid size={12}>
               <TextField
                 fullWidth
-                label="Your Product URL"
+                label="Your Product URL (Recommended)"
                 placeholder="https://yourproduct.com"
-                required
                 value={me.url || ''}
                 onChange={(e) => {
                   setMe({ ...me, url: e.target.value });
@@ -220,8 +221,8 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
             <Grid size={12}>
               <TextField
                 fullWidth
-                label="Your Product Name (Optional)"
-                placeholder="Auto-extracted from URL or enter manually"
+                label="Your Product Name"
+                placeholder="Enter product name (e.g., Cursor, GitHub Copilot)"
                 value={me.name}
                 onChange={(e) => {
                   setMe({ ...me, name: e.target.value });
@@ -259,9 +260,8 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                     <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
                       <TextField
                         fullWidth
-                        label={`Competitor ${index + 1} URL${index === 0 ? ' (required)' : ''}`}
-                        required={index === 0}
-                        placeholder="https://competitor.com"
+                                        label={`Competitor ${index + 1} URL${index === 0 ? ' (Recommended)' : ''}`}
+                placeholder="https://competitor.com"
                         value={competitors[index].url || ''}
                         onChange={(e) => {
                           const updated = [...competitors];
@@ -302,8 +302,8 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                       
                       <TextField
                         fullWidth
-                        label={`Competitor ${index + 1} Name (Optional)`}
-                        placeholder="Auto-extracted from URL or enter manually"
+                        label={`Competitor ${index + 1} Name`}
+                        placeholder="Enter competitor name"
                         value={competitors[index].name}
                         onChange={(e) => {
                           const updated = [...competitors];

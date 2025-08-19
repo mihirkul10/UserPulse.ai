@@ -7,9 +7,12 @@ import { z } from 'zod';
 import { generateProductContext } from '@/lib/openai';
 
 const ProductProfileSchema = z.object({
-  name: z.string().optional().or(z.literal('')),
-  url: z.string().min(1),
-});
+  name: z.string().optional(),
+  url: z.string().optional(),
+}).refine(
+  (data) => data.name || data.url,
+  { message: "Either name or URL must be provided" }
+);
 
 export async function POST(request: NextRequest) {
   try {

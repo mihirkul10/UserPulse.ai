@@ -811,8 +811,8 @@ function extractDomainFromUrl(url: string): string {
   }
 }
 
-export async function generateProductContext(product: { name?: string; url: string }): Promise<ContextPack> {
-  console.log('[generateProductContext] Generating context for:', product.name || 'product', `(URL: ${product.url})`);
+export async function generateProductContext(product: { name?: string; url?: string }): Promise<ContextPack> {
+  console.log('[generateProductContext] Generating context for:', product.name || 'product', product.url ? `(URL: ${product.url})` : '(no URL)');
   
   // If URL is provided, try to scrape it first
   if (product.url) {
@@ -834,17 +834,17 @@ export async function generateProductContext(product: { name?: string; url: stri
     }
   }
   
-  // Fallback to URL-based context generation
-  const productIdentifier = product.name || product.url;
-  const prompt = `You are a product research assistant. Generate a context summary for the product at "${product.url}"${product.name ? ` (${product.name})` : ''}.
+  // Fallback to name or URL-based context generation
+  const productIdentifier = product.name || (product.url ? extractDomainFromUrl(product.url) : 'Unknown Product');
+  const prompt = `You are a product research assistant. Generate a context summary for the product "${productIdentifier}"${product.url ? ` (URL: ${product.url})` : ''}.
 
 CRITICAL: You MUST respond with ONLY valid JSON in this exact format:
 {"contextText": "brief description of what this product does, its key features and target audience", "keywords": ["keyword1", "keyword2", "keyword3"]}
 
 Do not include any other text, explanations, or markdown formatting. Just the JSON object.
 
-Product URL: ${product.url}
-Product Name: ${product.name || 'Unknown - extract from URL'}`;
+Product: ${productIdentifier}
+${product.url ? `URL: ${product.url}` : ''}`;
 
   const content = await callOpenAI([
     { role: 'system', content: 'You are a JSON-only assistant. Always respond with valid JSON and nothing else.' },
@@ -853,7 +853,7 @@ Product Name: ${product.name || 'Unknown - extract from URL'}`;
 
   if (!content) {
     console.log('[generateProductContext] Using fallback context');
-    const productName = product.name || extractDomainFromUrl(product.url);
+    const productName = product.name || (product.url ? extractDomainFromUrl(product.url) : 'Product');
     return {
       contextText: `${productName} is a software product that provides solutions for users.`,
       keywords: [productName.toLowerCase(), 'software', 'product']
@@ -866,7 +866,7 @@ Product Name: ${product.name || 'Unknown - extract from URL'}`;
     // Check if content looks like JSON
     if (!cleanContent.startsWith('{')) {
       console.error('[generateProductContext] Response is not JSON object:', cleanContent.substring(0, 100));
-      const productName = product.name || extractDomainFromUrl(product.url);
+      const productName = product.name || (product.url ? extractDomainFromUrl(product.url) : 'Product');
       return {
         contextText: `${productName} is a software product that provides solutions for users.`,
         keywords: [productName.toLowerCase(), 'software', 'product']
@@ -878,7 +878,7 @@ Product Name: ${product.name || 'Unknown - extract from URL'}`;
     return result;
   } catch (error) {
     console.error('[generateProductContext] JSON parse failed:', error);
-    const productName = product.name || extractDomainFromUrl(product.url);
+    const productName = product.name || (product.url ? extractDomainFromUrl(product.url) : 'Product');
     return {
       contextText: `${productName} is a software product that provides solutions for users.`,
       keywords: [productName.toLowerCase(), 'software', 'product']
