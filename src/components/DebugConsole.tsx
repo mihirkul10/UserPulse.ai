@@ -208,9 +208,12 @@ export default function DebugConsole({
               </Typography>
             )}
             {subtitle && (
-              <Typography variant="caption" sx={{ color: '#A8ADB4', ml: 1 }}>
-                · {subtitle}
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
+                <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#4ADE80', animation: 'pulse 1.6s ease-in-out infinite' }} />
+                <Typography variant="caption" sx={{ color: '#A8ADB4' }}>
+                  {subtitle}
+                </Typography>
+              </Box>
             )}
             {isRunning && (
               <motion.div
@@ -337,6 +340,13 @@ export default function DebugConsole({
           </Box>
         </Collapse>
       </Paper>
+      <style jsx global>{`
+        @keyframes pulse {
+          0% { transform: scale(0.9); opacity: 0.6; }
+          50% { transform: scale(1); opacity: 1; }
+          100% { transform: scale(0.9); opacity: 0.6; }
+        }
+      `}</style>
     </motion.div>
   );
 }
