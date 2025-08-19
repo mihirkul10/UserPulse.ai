@@ -42,13 +42,13 @@ const steps = [
   {
     label: 'Mine Reddit',
     icon: <Search />,
-    description: 'We scan top AI/ML/product subreddits for posts & comments.',
-    details: 'We search 52+ communities including r/MachineLearning, r/startups, r/programming.',
+    description: 'We scan 52 AI/ML/product/startup subreddits for posts & comments.',
+    details: 'We search communities including r/MachineLearning, r/LocalLLaMA, r/startups, r/SaaS, and 48 more.',
   },
   {
     label: 'Analyze',
     icon: <Analytics />,
-    description: 'GPT-5 clusters insights into launches, loves, and dislikes.',
+    description: 'GPT-4o clusters insights into launches, loves, and dislikes.',
     details: 'AI classifies discussions into aspects like performance, pricing, features, and sentiment.',
   },
   {
@@ -196,7 +196,7 @@ export default function HowItWorksDialog({ open, onClose }: HowItWorksDialogProp
             <strong>Data source:</strong> Reddit only (authentic user feedback)
           </Typography>
           <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
-            <strong>AI model:</strong> GPT-5 for analysis + reporting
+            <strong>AI model:</strong> GPT-4o for analysis + reporting
           </Typography>
           <Typography variant="caption" color="text.secondary">
             <strong>Privacy:</strong> Reports are stored locally in your browser

@@ -341,105 +341,74 @@ EXAMPLE (structure, tone, and formatting):
   [ref](https://reddit.com/r/programming/comments/ccc) | [ref](https://reddit.com/r/startups/comments/ddd) | [ref](https://reddit.com/r/learnprogramming/comments/eee)
 `;
 
-// Competitor analysis prompt with PM/founder perspective
+// New: Section-only system prompt to avoid meta responses and ensure strict output
 export const REPORT_SECTION_SYSTEM_PROMPT = `
-You are a competitive intelligence expert helping a founder understand their competition through Reddit user discussions.
+You are a competitive intelligence analyst writing ONE product section of a report based on Reddit discussions.
 
-Analyze with a strategic lens: What can we learn? What should we copy? What should we avoid? What gaps can we exploit?
+CRITICAL RULES:
+1. Analyze the provided Reddit posts and extract REAL insights - DO NOT use placeholder text
+2. If data is limited, still extract what you can from available posts
+3. Every claim MUST be backed by the provided Reddit posts with [ref](url) links
+4. Write in professional, analytical tone - no marketing fluff
+5. Focus on the most upvoted/discussed items (higher score = more important)
 
-Required output format for EACH competitor:
+Required output format:
 
-### **{Competitor Name}**
+### **{Product Name}**
 
-#### **🚀 Recent Moves & Market Position**
-• **{Feature/update/strategy}** *(Timeline: {when})*
-  Market reaction: {How users responded}
-  Threat level: {High/Medium/Low to our product}
-  Our response: {Should we match/ignore/differentiate}
-  [ref](url) | [ref](url)
+#### **🚀 New Updates**
+• **{Actual feature or update}** *(launched {date if mentioned})*
+  {2-3 sentences describing the update based on Reddit discussions}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
 
-#### **💪 Their Strengths (What to Learn From)**
-• **{What they do well}**
-  Why it works: {Underlying principle/approach}
-  User impact: *"{Quote showing satisfaction}"* - r/{subreddit}
-  Can we adapt this? {Yes/No/Modified - specific suggestion}
-  Implementation path: {How we could do it better}
-  [ref](url) | [ref](url)
+#### **💚 What Users Love**  
+• **{Actual feature users praise}**
+  {Why users love it, with specific examples from posts}
+  *"{Actual quote if available}"* - r/{subreddit}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
 
-#### **🔓 Their Weaknesses (Our Opportunities)**
-• **{Where they fail}**
-  User pain level: {How much this frustrates users}
-  Why they haven't fixed it: {Technical/business/priority reasons}
-  Our advantage: {How we can win these users}
-  Marketing angle: {Message to highlight our solution}
-  [ref](url) | [ref](url)
+#### **⚠️ What Users Dislike**
+• **{Actual problem users complain about}**
+  {Severity and context from discussions}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
 
-#### **👥 Their User Base**
-• **Primary segment**: {Who uses them most}
-  Why they choose them: {Key decision factors}
-  Switching barriers: {What keeps users there}
-  Poaching strategy: {How to win them over}
-  [ref](url) | [ref](url)
-
-#### **💰 Pricing & Business Model Insights**
-• **{Pricing complaint/praise}**
-  Price sensitivity: {What users think about their pricing}
-  Value perception: {What users think they're paying for}
-  Our pricing opportunity: {How to position against them}
-  [ref](url) | [ref](url)
-
-If limited data: "⚠️ Limited visibility - Consider: Direct user research needed for {competitor}"
+If a section has NO data, write: "(No {updates/praise/complaints} found in recent discussions)"
 `;
 
 // Founder-specific prompt for analyzing your own product
 export const FOUNDER_SECTION_SYSTEM_PROMPT = `
-You are a strategic advisor analyzing Reddit discussions to help a founder understand their product's market position and opportunities.
+You are analyzing Reddit discussions about the FOUNDER'S OWN PRODUCT to provide insights on user perception.
 
-Think like a PM and startup founder. Extract ACTIONABLE insights that can drive product decisions, marketing strategy, and competitive positioning.
+CRITICAL RULES:
+1. Extract REAL user feedback from Reddit posts - both positive and negative
+2. Be honest about problems users face - founders need truth, not flattery
+3. Highlight opportunities based on what users are asking for
+4. Every insight must link to actual Reddit discussions
 
 Required output format:
 
 ## **Your Product: {Product Name}**
 
-### **📊 Market Position & User Perception**
+### **📊 User Sentiment Analysis**
 
-#### **💚 Competitive Advantages (What's Working)**
-• **{Specific strength}**
-  WHY it matters: {Business impact and moat potential}
-  User validation: *"{Quote}"* - r/{subreddit}
-  Action: Double down on this - {specific recommendation}
+#### **💚 What Users Appreciate**
+• **{Feature/aspect users like}**
+  {Why they value it, with examples}
+  *"{Quote if available}"* - r/{subreddit}
   [ref](url) | [ref](url)
 
-#### **🔧 Critical Issues (What's Broken)**
-• **{Specific problem}**
-  Business impact: {How this affects retention/growth/NPS}
-  User frustration level: {High/Medium/Low based on sentiment}
-  Fix priority: {P0/P1/P2} - {Why this priority}
-  Suggested solution: {Specific fix based on user feedback}
+#### **🔧 Pain Points & Issues**
+• **{Problem users face}**
+  {Impact and frequency based on discussions}
+  Users suggest: {what they want instead}
   [ref](url) | [ref](url)
 
-#### **🎯 Growth Opportunities**
-• **{Specific opportunity}**
-  Market demand: {Evidence of need from discussions}
-  Competitive gap: {Which competitors lack this}
-  Implementation effort: {High/Medium/Low}
-  Potential impact: {User acquisition/retention benefit}
-  GTM angle: {How to market this feature}
+#### **🎯 Feature Requests & Opportunities**
+• **{What users are asking for}**
+  {Why they want it and potential impact}
   [ref](url) | [ref](url)
 
-#### **⚡ Quick Wins (Low effort, high impact)**
-• **{Small improvement users want}**
-  Why now: {Urgency based on user feedback}
-  Expected outcome: {Specific metric improvement}
-  [ref](url) | [ref](url)
-
-#### **🎭 User Segments & Use Cases**
-• **{User segment/persona}**: {What they use product for}
-  Their workflow: {How they currently use it}
-  Unmet needs: {What would make them power users}
-  [ref](url) | [ref](url)
-
-If limited data: "⚠️ Low Reddit visibility - Action needed: Start engaging in {specific subreddits} to build presence"
+If limited data: "(Limited Reddit discussions found - consider monitoring these communities: r/startups, r/SaaS, etc.)"
 `;
 
 function buildSectionUserPrompt(productName: string, items: UnifiedItem[]) {
@@ -651,77 +620,39 @@ export async function writeReportV2(
   const competitorItems = competitors.flatMap(c => byProduct[c] || []);
   
   const takeawaysPrompt = `
-COMPETITIVE INTELLIGENCE SUMMARY:
+ANALYZED DATA SUMMARY:
 ${JSON.stringify({
   founder_product: {
     name: input.me.name,
     mentions: founderItems.length,
-    sentiment_breakdown: {
-      positive: founderItems.filter(i => i.aspect?.includes('positive')).length,
-      negative: founderItems.filter(i => i.aspect?.includes('negative')).length,
-      neutral: founderItems.filter(i => !i.aspect?.includes('positive') && !i.aspect?.includes('negative')).length
-    },
-    top_discussions: founderItems.slice(0, 5).map(i => ({ 
-      aspect: i.aspect, 
-      score: i.score,
-      engagement: i.num_comments 
-    }))
+    top_aspects: founderItems.slice(0, 5).map(i => ({ aspect: i.aspect, score: i.score }))
   },
   competitors: competitors.map(c => ({
     name: c,
     mentions: (byProduct[c] || []).length,
-    strengths: (byProduct[c] || []).filter(i => i.aspect?.includes('positive')).length,
-    weaknesses: (byProduct[c] || []).filter(i => i.aspect?.includes('negative')).length
+    top_aspects: (byProduct[c] || []).slice(0, 3).map(i => ({ aspect: i.aspect, score: i.score }))
   })),
-  market_signals: {
-    total_discussions: unified.length,
-    subreddits: coverage.subredditsUsed,
-    time_period: coverage.days + ' days',
-    engagement_rate: unified.reduce((sum, i) => sum + (i.num_comments || 0), 0) / unified.length
-  }
+  total_posts_analyzed: unified.length,
+  subreddits_covered: coverage.subredditsUsed,
+  time_period: coverage.days + ' days'
 }, null, 2)}
 
-You are the strategic advisor to the founder of ${input.me.name}. Based on the competitive landscape above, provide actionable strategic recommendations.
+Based on the Reddit analysis above, generate 3 SPECIFIC, ACTIONABLE strategic recommendations:
 
-Think like a PM and founder: What moves will drive growth? What threats need immediate attention? Where's the white space?
+1. **Competitive Advantage**: What should ${input.me.name} do differently based on competitor weaknesses?
+2. **Feature Priority**: What feature/improvement would have the biggest impact based on user feedback?
+3. **Market Opportunity**: What unmet need or gap exists that ${input.me.name} could address?
 
-## **🎯 Strategic Action Plan for ${input.me.name}**
+Format each as:
+## **💡 Strategic Takeaways for ${input.me.name}**
 
-### **🚀 Immediate Actions (Next 2 Weeks)**
-• **[Specific quick win]**: 
-  Why now: [Urgent market signal or competitor move]
-  Expected impact: [Specific metric - user acquisition, retention, NPS]
-  How to execute: [Concrete first steps]
+• **[Specific Action Title]**: [2-3 sentences explaining WHY this matters based on the data, and HOW to execute it]
 
-### **⚔️ Competitive Positioning (Next Month)**
-• **[Differentiation strategy]**:
-  Competitor vulnerability: [Specific weakness to exploit]
-  Our advantage: [How we're uniquely positioned]
-  Go-to-market angle: [Specific messaging and channels]
-  Success metric: [How we'll know it's working]
+• **[Specific Action Title]**: [2-3 sentences with concrete next steps based on user feedback patterns]
 
-### **🎪 Market Expansion (Next Quarter)**
-• **[New segment/feature/market]**:
-  Evidence of demand: [Specific signals from data]
-  Competition gap: [What nobody is doing well]
-  Resource requirement: [Team, time, budget]
-  Revenue potential: [TAM or specific opportunity size]
+• **[Specific Action Title]**: [2-3 sentences with measurable opportunity based on market gaps]
 
-### **🛡️ Defensive Moves (Ongoing)**
-• **[What to protect]**:
-  Current advantage: [What we do better]
-  Threat assessment: [Who might copy us and when]
-  Moat building: [How to stay ahead]
-
-### **📊 Key Metrics to Track**
-• [Specific metric 1]: Target and why it matters
-• [Specific metric 2]: Target and why it matters
-• [Specific metric 3]: Target and why it matters
-
-### **⚠️ Risks to Monitor**
-• **[Specific risk]**: Early warning signs and mitigation plan
-
-Make every recommendation SPECIFIC to ${input.me.name} based on the actual data. Include competitor names, feature names, and real user feedback.`;
+Be SPECIFIC - mention actual products, features, and user complaints from the data. NO generic advice.`;
   
   const takeaways = await callOpenAI([
     { role: 'system', content: `You are a strategic advisor helping ${input.me.name} beat their competition. Give specific, actionable advice based on Reddit user feedback.` },
