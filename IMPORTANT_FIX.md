@@ -15,7 +15,7 @@ Your Vercel environment can be configured with either `gpt-5-nano-2025-08-07` (r
 ## Verification
 The application now correctly detects and uses the configured model:
 ```
-[generateProductContext] Calling OpenAI with model: gpt-4o
+[generateProductContext] Calling OpenAI with model: gpt-5-nano-2025-08-07
 [generateProductContext] Successfully parsed context
 ```
 
@@ -24,20 +24,19 @@ The application now correctly detects and uses the configured model:
 ### For Local Development
 Always ensure `.env.local` has:
 ```
-OPENAI_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5-nano-2025-08-07
 ```
 
 ### For Vercel Deployment
-Already configured correctly with `gpt-4o`
+Recommended: `gpt-5-nano-2025-08-07`
 
 ### Model Compatibility
 The code in `src/lib/openai.ts` correctly handles:
-- `gpt-4o` and `gpt-4*` models use `max_tokens` parameter
-- `gpt-3*` models use `max_tokens` parameter
-- Other models use `max_completion_tokens` parameter
+- `gpt-5-nano-2025-08-07` uses `max_completion_tokens`
+- `gpt-4*` and `gpt-3*` models use `max_tokens`
 
 ## Testing Confirmation
-✅ Local API test successful with gpt-4o
+✅ Local API test successful with gpt-5-nano-2025-08-07
 ✅ Context generation working
 ✅ Proper error handling in place
 

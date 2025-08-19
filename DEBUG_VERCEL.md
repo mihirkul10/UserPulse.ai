@@ -29,7 +29,7 @@
 
 **3. OpenAI API Issues:**
 - Rate limiting
-- Model availability (gpt-4o)
+- Model availability (gpt-5-nano-2025-08-07)
 - API key permissions
 
 #### Test Specific Endpoints:

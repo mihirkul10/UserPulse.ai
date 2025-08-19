@@ -6,7 +6,7 @@
 
 1. ✅ **JSON Parsing Errors** - Fixed with comprehensive error handling
 2. ✅ **OpenAI API Errors** - Added fallback reports and proper error catching
-3. ✅ **Model Compatibility** - Updated to use `gpt-4o` with correct parameters
+3. ✅ **Model Compatibility** - Updated to use `gpt-5-nano-2025-08-07` with correct parameters
 4. ✅ **Timeout Handling** - Added 60-second timeout with graceful fallbacks
 
 ### **🚀 Deployment Instructions:**
@@ -22,7 +22,7 @@ REDDIT_USERNAME=micool10
 REDDIT_PASSWORD=Msktycoon0@.
 REDDIT_USER_AGENT=competitor-insight/1.0 by micool10
 OPENAI_API_KEY=(your OpenAI API key starting with sk-)
-OPENAI_MODEL=gpt-4o
+OPENAI_MODEL=gpt-5-nano-2025-08-07
 DEFAULT_DAYS=30
 DEFAULT_MIN_SCORE_REDDIT=0
 DEFAULT_MAX_THREADS=250
@@ -48,7 +48,7 @@ Once deployed, test with:
 - Detailed error logging for debugging
 
 #### **Model Compatibility**
-- Uses `gpt-4o` with proper parameters
+- Uses `gpt-5-nano-2025-08-07` with proper parameters
 - Handles both `max_tokens` and `max_completion_tokens`
 - Temperature parameter only when supported
 
