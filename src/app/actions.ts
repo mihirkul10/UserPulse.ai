@@ -309,7 +309,12 @@ async function runBackgroundJob(
     if (status.logs) status.logs.forEach((l: string) => onLog(l));
     if (status.status === 'completed') {
       const res = await fetch(`${resultPath}${jobId}`);
-      return await res.json();
+      const data = await res.json();
+      // Normalize result shape per job type
+      if (endpointBase === '/api/fetch/reddit') {
+        return (data && data.items) ? data.items : [];
+      }
+      return data;
     }
     if (status.status === 'failed') {
       throw new Error(status.error || 'Background job failed');
