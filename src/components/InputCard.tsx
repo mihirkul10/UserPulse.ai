@@ -34,7 +34,7 @@ interface InputCardProps {
 }
 
 export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
-  const [me, setMe] = useState<ProductProfile>({ name: '' });
+  const [me, setMe] = useState<ProductProfile>({ name: '', url: '' });
   const [competitors, setCompetitors] = useState<ProductProfile[]>([
     { name: '' },
     { name: '' },
@@ -102,8 +102,8 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
   };
 
   const handleClear = () => {
-    setMe({ name: '' });
-    setCompetitors([{ name: '' }, { name: '' }, { name: '' }]);
+    setMe({ name: '', url: '' });
+    setCompetitors([{ name: '', url: '' }, { name: '', url: '' }, { name: '', url: '' }]);
     setErrors({});
     setTouched({ me: false, competitors: [false, false, false] });
     setCompetitorCount(1);
@@ -166,7 +166,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                 required
                 value={me.name}
                 onChange={(e) => {
-                  setMe({ name: e.target.value });
+                  setMe({ ...me, name: e.target.value });
                   if (touched.me) validate();
                 }}
                 onBlur={() => {
@@ -195,6 +195,32 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                 }}
               />
             </Grid>
+
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Your Product URL (Optional)"
+                placeholder="https://yourproduct.com"
+                value={me.url || ''}
+                onChange={(e) => {
+                  setMe({ ...me, url: e.target.value });
+                }}
+                helperText="Provide URL for better context extraction (recommended)"
+                InputProps={{
+                  'aria-label': 'Your product URL',
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    transition: 'all 0.2s',
+                    '&:hover': {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main',
+                      },
+                    },
+                  },
+                }}
+              />
+            </Grid>
             
             <Grid size={12}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -217,7 +243,7 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                         value={competitors[index].name}
                         onChange={(e) => {
                           const updated = [...competitors];
-                          updated[index] = { name: e.target.value };
+                          updated[index] = { ...updated[index], name: e.target.value };
                           setCompetitors(updated);
                           if (touched.competitors[index]) validate();
                         }}
@@ -251,6 +277,20 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                         </Tooltip>
                                               )}
                       </Box>
+                      
+                      <TextField
+                        fullWidth
+                        label={`Competitor ${index + 1} URL (Optional)`}
+                        placeholder="https://competitor.com"
+                        value={competitors[index].url || ''}
+                        onChange={(e) => {
+                          const updated = [...competitors];
+                          updated[index] = { ...updated[index], url: e.target.value };
+                          setCompetitors(updated);
+                        }}
+                        helperText="URL for better context extraction"
+                        sx={{ mb: 2 }}
+                      />
                       </Box>
                     ))}
                   </Box>

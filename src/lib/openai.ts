@@ -4,7 +4,7 @@ import { UnifiedItem, AnalyzeInput, CoverageMeta, ContextPack, ReportSections } 
 
 let openai: OpenAI | null = null;
 
-function getOpenAI() {
+export function getOpenAI() {
   if (!openai) {
     if (!process.env.OPENAI_API_KEY) {
       throw new Error('OPENAI_API_KEY environment variable is not set');
@@ -704,9 +704,118 @@ export async function writeReport(
   return sections;
 }
 
-export async function generateProductContext(product: { name: string }): Promise<ContextPack> {
-  console.log('[generateProductContext] Generating context for:', product.name);
+/**
+ * Scrape a product URL and extract structured information using AI
+ */
+async function scrapeProductURL(url: string): Promise<{ contextText: string; keywords: string[] } | null> {
+  try {
+    console.log(`[scrapeProductURL] Scraping ${url}...`);
+    
+    // Fetch the webpage content
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; UserPulse-AI/1.0; +https://userpulse.ai)',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error(`[scrapeProductURL] Failed to fetch ${url}: ${response.status}`);
+      return null;
+    }
+    
+    const html = await response.text();
+    
+    // Extract text content from HTML (simple approach)
+    const textContent = extractTextFromHTML(html);
+    
+    // Use AI to analyze the webpage content
+    const analysisPrompt = `
+Analyze this product webpage content and extract information for Reddit search:
+
+WEBPAGE CONTENT:
+${textContent.slice(0, 4000)}
+
+Extract and return ONLY a JSON object:
+{
+  "contextText": "2-3 sentence description of what this product does, its key features and target audience",
+  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+}
+
+Focus on terms that would appear in Reddit discussions about this product.
+`;
+
+    const result = await callOpenAI([
+      { role: 'system', content: 'You are a web content analyzer. Always respond with valid JSON only.' },
+      { role: 'user', content: analysisPrompt }
+    ], 'scrapeProductURL');
+    
+    if (!result) {
+      return null;
+    }
+    
+    try {
+      const cleanResult = result.replace(/```json\n?|\n?```/g, '').trim();
+      return JSON.parse(cleanResult);
+    } catch (parseError) {
+      console.error(`[scrapeProductURL] Failed to parse AI response:`, result);
+      return null;
+    }
+    
+  } catch (error) {
+    console.error(`[scrapeProductURL] Error scraping ${url}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Simple HTML to text extraction
+ */
+function extractTextFromHTML(html: string): string {
+  // Remove script and style elements
+  let text = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
   
+  // Remove HTML tags
+  text = text.replace(/<[^>]*>/g, ' ');
+  
+  // Decode HTML entities
+  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, '<');
+  text = text.replace(/&gt;/g, '>');
+  text = text.replace(/&quot;/g, '"');
+  text = text.replace(/&#39;/g, "'");
+  
+  // Clean up whitespace
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  return text;
+}
+
+export async function generateProductContext(product: { name: string; url?: string }): Promise<ContextPack> {
+  console.log('[generateProductContext] Generating context for:', product.name, product.url ? `(URL: ${product.url})` : '');
+  
+  // If URL is provided, try to scrape it first
+  if (product.url) {
+    try {
+      console.log('[generateProductContext] Attempting to scrape URL for enhanced context...');
+      const scrapedInfo = await scrapeProductURL(product.url);
+      
+      if (scrapedInfo) {
+        console.log('[generateProductContext] Successfully scraped URL context');
+        return {
+          contextText: scrapedInfo.contextText,
+          keywords: scrapedInfo.keywords,
+        };
+      } else {
+        console.log('[generateProductContext] URL scraping failed, falling back to name-based context');
+      }
+    } catch (error) {
+      console.log('[generateProductContext] URL scraping error, falling back to name-based context:', error);
+    }
+  }
+  
+  // Fallback to name-based context generation
   const prompt = `You are a product research assistant. Generate a context summary for the product "${product.name}".
 
 CRITICAL: You MUST respond with ONLY valid JSON in this exact format:

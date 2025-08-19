@@ -1,5 +1,6 @@
 export interface ProductProfile {
   name: string;
+  url?: string; // Optional URL to scrape for better context
 }
 
 export interface AnalyzeInput {
