@@ -78,10 +78,12 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
   const validate = () => {
     const newErrors: typeof errors = {};
     
-    // Require either URL or name for main product
-    if (!me.url?.trim() && !me.name?.trim()) {
-      newErrors.me = 'Please provide either a URL or product name';
-    } else if (me.url?.trim() && !isValidUrl(me.url)) {
+    // Require both URL and name for main product
+    if (!me.name?.trim()) {
+      newErrors.me = 'Product name is required';
+    } else if (!me.url?.trim()) {
+      newErrors.me = 'Product URL is required';
+    } else if (!isValidUrl(me.url)) {
       newErrors.me = 'Please enter a valid URL (e.g., https://example.com)';
     }
     
@@ -181,16 +183,17 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
           </Typography>
           
           <Grid container spacing={3}>
-            <Grid size={12}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Your Product URL (Recommended)"
-                placeholder="https://yourproduct.com"
-                value={me.url || ''}
+                label="Your Product Name"
+                placeholder="e.g., Cursor, Replit, v0"
+                value={me.name}
                 onChange={(e) => {
-                  setMe({ ...me, url: e.target.value });
+                  setMe({ ...me, name: e.target.value });
                   if (touched.me) validate();
                 }}
+                required
                 onBlur={() => {
                   setTouched(prev => ({ ...prev, me: true }));
                   validate();
@@ -198,13 +201,13 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
                 error={touched.me && !!errors.me}
                 helperText={
                   touched.me && errors.me ? errors.me : 
-                  'Website URL for automatic context extraction (e.g., "https://cursor.sh")'
+                  'The name users know your product by'
                 }
                 inputRef={meInputRef}
                 InputProps={{
-                  'aria-label': 'Your product URL',
+                  'aria-label': 'Your product name',
                   'aria-required': true,
-                  'aria-describedby': 'your-product-url-helper',
+                  'aria-describedby': 'your-product-name-helper',
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
@@ -218,26 +221,34 @@ export default function InputCard({ onSubmit, isLoading }: InputCardProps) {
               />
             </Grid>
 
-            <Grid size={12}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Your Product Name"
-                placeholder="Enter product name (e.g., Cursor, GitHub Copilot)"
-                value={me.name}
+                label="Your Product URL"
+                placeholder="https://yourproduct.com"
+                value={me.url || ''}
                 onChange={(e) => {
-                  setMe({ ...me, name: e.target.value });
+                  setMe({ ...me, url: e.target.value });
+                  if (touched.me) validate();
                 }}
-                helperText="Will be auto-extracted from URL if not provided"
+                onBlur={() => {
+                  setTouched(prev => ({ ...prev, me: true }));
+                  validate();
+                }}
+                error={touched.me && !!errors.me}
+                helperText='Website URL for context extraction'
+                required
                 InputProps={{
-                  'aria-label': 'Your product name',
+                  'aria-label': 'Your product URL',
+                  'aria-required': true,
+                  'aria-describedby': 'your-product-url-helper',
                 }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     transition: 'all 0.2s',
-                    '&:hover': {
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'primary.main',
-                      },
+                    '&.Mui-focused': {
+                      transform: 'translateY(-1px)',
+                      boxShadow: (theme) => `0 4px 12px ${theme.palette.primary.main}20`,
                     },
                   },
                 }}
