@@ -96,7 +96,7 @@ export default function ProgressPanel({
       <Card>
         <CardContent sx={{ p: 3 }}>
           <Typography variant="h5" fontWeight={600} gutterBottom>
-            Analyzing Competitors...
+            Preparing your competitive report…
           </Typography>
           
           <Box sx={{ mb: 3 }}>

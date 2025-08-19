@@ -53,6 +53,8 @@ export default function DebugConsole({
   const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [elapsed, setElapsed] = useState<string>('');
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -72,6 +74,55 @@ export default function DebugConsole({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToggle]);
+
+  // Track elapsed time while running
+  useEffect(() => {
+    if (isRunning && !startedAt) setStartedAt(Date.now());
+    if (!isRunning) setStartedAt(null);
+  }, [isRunning]);
+
+  useEffect(() => {
+    if (!startedAt) { setElapsed(''); return; }
+    const id = setInterval(() => {
+      const ms = Date.now() - startedAt;
+      const s = Math.floor(ms / 1000);
+      const m = Math.floor(s / 60);
+      const rem = s % 60;
+      setElapsed(`${m}m ${rem}s`);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  // Convert technical logs into friendly language
+  const prettify = (entry: LogEntry): LogEntry => {
+    const msg = entry.message || '';
+    if (/Background analysis started/i.test(msg)) {
+      return { ...entry, service: 'System', message: 'Working in the background. You can keep this tab open – we’ll update you as we progress.' };
+    }
+    if (/Classifying (\d+) items for (.+)/i.test(msg)) {
+      const match = msg.match(/Classifying (\d+) items for (.+)/i);
+      return { ...entry, service: 'Classifier', message: `Understanding ${match?.[1]} posts about ${match?.[2]} to group themes.` };
+    }
+    if (/Generating report/i.test(msg)) {
+      return { ...entry, service: 'Writer', message: 'Writing the final report with evidence links.' };
+    }
+    if (/Searching r\//i.test(msg)) {
+      const sub = msg.match(/Searching (r\/[^ ]+)/i)?.[1] || 'subreddit';
+      return { ...entry, service: 'Crawler', message: `Scanning ${sub} for relevant discussions...` };
+    }
+    if (/Found (\d+) discussions/i.test(msg)) {
+      const n = msg.match(/Found (\d+)/i)?.[1];
+      return { ...entry, service: 'Crawler', message: `Collected ${n} discussions.` };
+    }
+    if (/Error/i.test(msg)) {
+      return { ...entry, level: 'warn', message: 'A step took longer than expected, retrying safely.' };
+    }
+    if (/Calling OpenAI|Compiled|GET |POST /i.test(msg)) {
+      // Hide noisy technical logs
+      return { ...entry, message: '' };
+    }
+    return entry;
+  };
 
   const handleCopy = () => {
     const text = logs
@@ -131,6 +182,11 @@ export default function DebugConsole({
             >
               Agent Brain
             </Typography>
+            {elapsed && (
+              <Typography variant="caption" sx={{ color: '#A8ADB4', ml: 1 }}>
+                · {elapsed}
+              </Typography>
+            )}
             {isRunning && (
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
@@ -192,7 +248,10 @@ export default function DebugConsole({
             }}
           >
             <AnimatePresence initial={false}>
-              {logs.map((log, index) => (
+              {logs.map((raw, index) => {
+                const log = prettify(raw);
+                if (!log.message) return null;
+                return (
                 <motion.div
                   key={`${log.timestamp}-${index}`}
                   initial={{ opacity: 0, x: -20 }}
@@ -242,7 +301,7 @@ export default function DebugConsole({
                     </Typography>
                   </Box>
                 </motion.div>
-              ))}
+              );})}
             </AnimatePresence>
             
             {logs.length === 0 && (
