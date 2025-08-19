@@ -184,7 +184,6 @@ export default function Home() {
               isOpen={consoleOpen}
               onToggle={() => setConsoleOpen(!consoleOpen)}
               isRunning={true}
-              subtitle={currentSubtext}
             />
             <ProgressPanel
               tasks={tasks}

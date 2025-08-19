@@ -52,7 +52,7 @@ DEFAULT_LANGS=en
 
 1. Install Heroku CLI
 2. `heroku create your-app-name`
-3. Set environment variables: `heroku config:set OPENAI_MODEL=gpt-5-nano-2025-08-07`
+3. Set environment variables: `heroku config:set OPENAI_MODEL=gpt-4o`
 4. `git push heroku main`
 
 ## Recommended: Railway or Render

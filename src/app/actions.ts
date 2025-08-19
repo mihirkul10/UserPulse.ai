@@ -48,7 +48,8 @@ export async function runAnalysisWithStreaming(
     onProgress({ percentage: PROGRESS_WEIGHTS.CONTEXT + PROGRESS_WEIGHTS.MINE_ME, taskIndex: 1 });
     onLog(`[Crawler] 🔍 Searching ${input.subreddits.length} subreddits for discussions about ${input.me.name}...`);
     
-    const mineMe = await runBackgroundJob('/api/fetch/reddit', {
+    const mineMe = await streamCall('/api/fetch/reddit', {
+      target: 'me',
       ...input,
       subreddits: input.subreddits.length > 0 ? input.subreddits : DEFAULT_SUBREDDITS,
       meContext,
@@ -60,7 +61,8 @@ export async function runAnalysisWithStreaming(
     onProgress({ percentage: PROGRESS_WEIGHTS.CONTEXT + PROGRESS_WEIGHTS.MINE_ME + PROGRESS_WEIGHTS.MINE_COMPETITORS, taskIndex: 2 });
     onLog(`[Crawler] 🔍 Searching ${input.subreddits.length} subreddits for discussions about competitors: ${input.competitors.map(c => c.name).join(', ')}...`);
     
-    const mineCompetitors = await runBackgroundJob('/api/fetch/reddit', {
+    const mineCompetitors = await streamCall('/api/fetch/reddit', {
+      target: 'competitors',
       ...input,
       subreddits: input.subreddits.length > 0 ? input.subreddits : DEFAULT_SUBREDDITS,
       meContext,
@@ -82,39 +84,16 @@ export async function runAnalysisWithStreaming(
     
     const allItems = [...mineMe, ...mineCompetitors];
 
-    // Submit background job to avoid Vercel timeouts
-    onLog('[System] Submitting background job for report generation...');
-    const startRes = await fetch('/api/analyze/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: allItems, input, meContext }),
-    });
-    const { jobId } = await startRes.json();
-    onLog(`[System] Job started: ${jobId}`);
-
-    // Poll status until complete
+    // Try server analysis first; if it fails, synthesize a local report so we never crash
     let result: AnalysisResult | null = null;
-    let lastProgress = 0;
-    for (let i = 0; i < 600; i++) { // up to 10 minutes with 1s interval
-      await new Promise(r => setTimeout(r, 1000));
-      const statusRes = await fetch(`/api/analyze/status?jobId=${jobId}`);
-      const status = await statusRes.json();
-      if (status.logs) status.logs.forEach((l: string) => onLog(l));
-      if (typeof status.progress === 'number' && status.progress !== lastProgress) {
-        lastProgress = status.progress;
-        onProgress({ percentage: Math.max(lastProgress, 90), taskIndex: 5 });
-      }
-      if (status.status === 'completed') {
-        const res = await fetch(`/api/analyze/result?jobId=${jobId}`);
-        result = await res.json();
-        break;
-      }
-      if (status.status === 'failed') {
-        throw new Error(status.error || 'Background job failed');
-      }
-    }
-    if (!result) {
-      onLog('[System] Background job took too long, returning local fallback.');
+    try {
+      result = await streamCall('/api/analyze', {
+        items: allItems,
+        input,
+        meContext,
+      }, onLog) as AnalysisResult;
+    } catch (serverErr) {
+      onLog(`[Writer] ⚠️ Server analysis failed. Falling back to local heuristic report.`);
       result = buildLocalFallbackReport(allItems, input, meContext, onLog);
     }
     
@@ -281,76 +260,6 @@ async function streamCall(
     onLog(`[System] Error calling ${endpoint}: ${error instanceof Error ? error.message : 'Unknown'}`);
     throw error;
   }
-}
-
-// Background job helper for endpoints converted to BG mode
-async function runBackgroundJob(
-  endpointBase: '/api/fetch/reddit' | '/api/analyze',
-  payload: any,
-  onLog: LogCallback
-): Promise<unknown> {
-  // Map endpoint to its start/status/result paths
-  const base = endpointBase === '/api/fetch/reddit' ? '/api/fetch/reddit' : '/api/analyze';
-  const startPath = `${base}/start`;
-  const statusPath = `${base}/status?jobId=`;
-  const resultPath = `${base}/result?jobId=`;
-
-  const startRes = await fetch(startPath, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const { jobId } = await startRes.json();
-
-  let lastLogSent = '';
-  let lastKey = '';
-  let lastEmitTs = 0;
-  let lastProgressEmitted = -1;
-  let bgShown = false;
-  for (let i = 0; i < 900; i++) { // 15 minutes max
-    await new Promise(r => setTimeout(r, 1000));
-    const statusRes = await fetch(`${statusPath}${jobId}`);
-    const status = await statusRes.json();
-    // Controlled logging: emit only on meaningful changes
-    if (status.logs && status.logs.length > 0) {
-      const latest = status.logs[status.logs.length - 1] as string;
-      const isBg = /Background analysis started/i.test(latest);
-      const key =
-        isBg ? 'bg' :
-        /Classifying/i.test(latest) ? 'classify' :
-        /Generating report|Writer/i.test(latest) ? 'writer' :
-        latest;
-      const now = Date.now();
-      const progress = typeof status.progress === 'number' ? status.progress : 0;
-      const progressBump = progress >= lastProgressEmitted + 10; // every 10%
-      const keyChanged = key !== lastKey;
-      const timeElapsed = now - lastEmitTs > 8000; // every 8s max if same key
-      // Show BG started only once
-      if (isBg && bgShown) {
-        // skip
-      } else if (((keyChanged && (now - lastEmitTs > 4000)) || progressBump || timeElapsed) && latest !== lastLogSent) {
-        onLog(latest);
-        lastLogSent = latest;
-        lastKey = key;
-        lastEmitTs = now;
-        if (progressBump) lastProgressEmitted = progress;
-        if (isBg) bgShown = true;
-      }
-    }
-    if (status.status === 'completed') {
-      const res = await fetch(`${resultPath}${jobId}`);
-      const data = await res.json();
-      // Normalize result shape per job type
-      if (endpointBase === '/api/fetch/reddit') {
-        return (data && data.items) ? data.items : [];
-      }
-      return data;
-    }
-    if (status.status === 'failed') {
-      throw new Error(status.error || 'Background job failed');
-    }
-  }
-  throw new Error('Background job timed out');
 }
 
 // Legacy function for backward compatibility

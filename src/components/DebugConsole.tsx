@@ -33,7 +33,6 @@ interface DebugConsoleProps {
   isOpen: boolean;
   onToggle: () => void;
   isRunning: boolean;
-  subtitle?: string;
 }
 
 const SERVICE_COLORS: Record<string, string> = {
@@ -49,14 +48,11 @@ export default function DebugConsole({
   logs, 
   isOpen, 
   onToggle, 
-  isRunning,
-  subtitle
+  isRunning 
 }: DebugConsoleProps) {
   const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [elapsed, setElapsed] = useState<string>('');
 
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -76,73 +72,6 @@ export default function DebugConsole({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onToggle]);
-
-  // Track elapsed time while running
-  useEffect(() => {
-    if (isRunning && !startedAt) setStartedAt(Date.now());
-    if (!isRunning) setStartedAt(null);
-  }, [isRunning]);
-
-  useEffect(() => {
-    if (!startedAt) { setElapsed(''); return; }
-    const id = setInterval(() => {
-      const ms = Date.now() - startedAt;
-      const s = Math.floor(ms / 1000);
-      const m = Math.floor(s / 60);
-      const rem = s % 60;
-      setElapsed(`${m}m ${rem}s`);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [startedAt]);
-
-  // Convert technical logs into friendly language
-  const prettify = (entry: LogEntry): LogEntry => {
-    const msg = entry.message || '';
-    if (/Background analysis started/i.test(msg)) {
-      return { ...entry, service: 'System', message: 'Working in the background. You can keep this tab open – we’ll update you as we progress.' };
-    }
-    if (/Classifying (\d+) items for (.+)/i.test(msg)) {
-      const match = msg.match(/Classifying (\d+) items for (.+)/i);
-      return { ...entry, service: 'Classifier', message: `Understanding ${match?.[1]} posts about ${match?.[2]} to group themes.` };
-    }
-    if (/Generating report/i.test(msg)) {
-      return { ...entry, service: 'Writer', message: 'Writing the final report with evidence links.' };
-    }
-    if (/Searching r\//i.test(msg)) {
-      const sub = msg.match(/Searching (r\/[^ ]+)/i)?.[1] || 'subreddit';
-      return { ...entry, service: 'Crawler', message: `Scanning ${sub} for relevant discussions...` };
-    }
-    if (/Found (\d+) discussions/i.test(msg)) {
-      const n = msg.match(/Found (\d+)/i)?.[1];
-      return { ...entry, service: 'Crawler', message: `Collected ${n} discussions.` };
-    }
-    if (/Error/i.test(msg)) {
-      return { ...entry, level: 'warn', message: 'A step took longer than expected, retrying safely.' };
-    }
-    if (/Calling OpenAI|Compiled|GET |POST /i.test(msg)) {
-      // Hide noisy technical logs
-      return { ...entry, message: '' };
-    }
-    return entry;
-  };
-
-  // Coalesce repeated messages to reduce visual noise
-  const coalesced = (() => {
-    const out: Array<LogEntry & { count?: number }> = [];
-    const MAX = 80; // cap to latest 80 entries
-    const source = logs.slice(-MAX);
-    for (const raw of source) {
-      const entry = prettify(raw);
-      if (!entry.message) continue;
-      const last = out[out.length - 1];
-      if (last && last.service === entry.service && last.message === entry.message) {
-        last.count = (last.count || 1) + 1;
-      } else {
-        out.push({ ...entry });
-      }
-    }
-    return out;
-  })();
 
   const handleCopy = () => {
     const text = logs
@@ -202,19 +131,6 @@ export default function DebugConsole({
             >
               Agent Brain
             </Typography>
-            {elapsed && (
-              <Typography variant="caption" sx={{ color: '#A8ADB4', ml: 1 }}>
-                · {elapsed}
-              </Typography>
-            )}
-            {subtitle && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 1 }}>
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#4ADE80', animation: 'pulse 1.6s ease-in-out infinite' }} />
-                <Typography variant="caption" sx={{ color: '#A8ADB4' }}>
-                  {subtitle}
-                </Typography>
-              </Box>
-            )}
             {isRunning && (
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
@@ -276,10 +192,7 @@ export default function DebugConsole({
             }}
           >
             <AnimatePresence initial={false}>
-              {coalesced.map((raw, index) => {
-                const log = raw as any;
-                if (!log.message) return null;
-                return (
+              {logs.map((log, index) => (
                 <motion.div
                   key={`${log.timestamp}-${index}`}
                   initial={{ opacity: 0, x: -20 }}
@@ -325,11 +238,11 @@ export default function DebugConsole({
                         wordBreak: 'break-word',
                       }}
                     >
-                      {log.message}{(log as any).count && (log as any).count > 1 ? ` ×${(log as any).count}` : ''}
+                      {log.message}
                     </Typography>
                   </Box>
                 </motion.div>
-              );})}
+              ))}
             </AnimatePresence>
             
             {logs.length === 0 && (
@@ -340,13 +253,6 @@ export default function DebugConsole({
           </Box>
         </Collapse>
       </Paper>
-      <style jsx global>{`
-        @keyframes pulse {
-          0% { transform: scale(0.9); opacity: 0.6; }
-          50% { transform: scale(1); opacity: 1; }
-          100% { transform: scale(0.9); opacity: 0.6; }
-        }
-      `}</style>
     </motion.div>
   );
 }
