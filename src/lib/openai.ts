@@ -343,34 +343,36 @@ EXAMPLE (structure, tone, and formatting):
 
 // New: Section-only system prompt to avoid meta responses and ensure strict output
 export const REPORT_SECTION_SYSTEM_PROMPT = `
-You are writing ONE product section of a competitive intelligence report.
+You are a competitive intelligence analyst writing ONE product section of a report based on Reddit discussions.
 
-Rules (must follow strictly):
-- Output ONLY the section for the specified product, with this exact structure and spacing.
-- NEVER include meta commentary, data status messages, or requests for more data.
-- If evidence is sparse, still write concise, evidence-backed sentences using the provided posts.
-- Every bullet that makes a claim must include at least one [ref](url) link from the provided posts.
-- Do not output the overall report header or other products.
+CRITICAL RULES:
+1. Analyze the provided Reddit posts and extract REAL insights - DO NOT use placeholder text
+2. Replace ALL bracketed placeholders like [Feature Name] with ACTUAL content from the posts
+3. If you can't find specific updates, features, or issues in the data, write "No recent updates found" or similar
+4. Every claim MUST be backed by the provided Reddit posts with [ref](url) links
+5. Write in professional, analytical tone - no marketing fluff
 
-Required structure for the single product section:
+Required output format (fill with REAL data, not placeholders):
 
-### **[Product Name]**
+### **{Product Name}**
 
 #### **🚀 New Updates**
-• **[Feature/Update Name]** *(launched [date])*
-  [2–3 sentences about what changed and user reaction]
-  [ref](reddit_permalink) | [ref](reddit_permalink)
+• **{Actual feature or update name from posts}** *(launched {actual date if mentioned})*
+  {2-3 sentences describing the actual update based on Reddit discussions}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
 
-#### **💚 What Users Love**
-• **[Feature/Aspect]**
-  [2–3 sentences on WHY users love it, include a short quote if impactful]
-  *"[short quote]"* - r/[subreddit]
-  [ref](reddit_permalink) | [ref](reddit_permalink)
+#### **💚 What Users Love**  
+• **{Actual feature users praise}**
+  {Why users actually love it based on posts, with specific examples}
+  *"{Actual quote from Reddit}"* - r/{actual_subreddit}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
 
 #### **⚠️ What Users Dislike**
-• **[Problem/Issue]**
-  [2–3 sentences on severity, frequency, and context]
-  [ref](reddit_permalink) | [ref](reddit_permalink)
+• **{Actual problem users complain about}**
+  {Actual severity and context from Reddit discussions}
+  [ref](actual_reddit_url) | [ref](actual_reddit_url)
+
+IMPORTANT: If a section has no relevant data, write a brief explanation like "No recent updates mentioned in discussions" rather than using placeholder text.
 `;
 
 function buildSectionUserPrompt(productName: string, items: UnifiedItem[]) {
@@ -386,16 +388,33 @@ function buildSectionUserPrompt(productName: string, items: UnifiedItem[]) {
     outbound_urls: it.evidence_urls?.slice(0, 4) || []
   }));
 
+  // Group posts by content type for easier analysis
+  const updates = posts.filter(p => p.title_or_text.toLowerCase().includes('update') || p.title_or_text.toLowerCase().includes('release') || p.title_or_text.toLowerCase().includes('launch'));
+  const positive = posts.filter(p => p.aspect?.includes('positive') || p.aspect?.includes('praise'));
+  const negative = posts.filter(p => p.aspect?.includes('negative') || p.aspect?.includes('complaint'));
+
   return `
-SECTION TARGET: ${productName}
+PRODUCT TO ANALYZE: ${productName}
 
-DATA (JSON):
-${JSON.stringify({ product: productName, posts }, null, 2)}
+REDDIT POSTS DATA:
+${JSON.stringify({ 
+  product: productName,
+  total_posts: posts.length,
+  updates: updates.length,
+  positive_mentions: positive.length,
+  negative_mentions: negative.length,
+  all_posts: posts 
+}, null, 2)}
 
-INSTRUCTIONS:
-- Write the single product section for ${productName} using only the structure defined by the system prompt.
-- Use multiple posts as evidence in each subsection; always include [ref](url) links.
-- Be concise but specific; avoid filler sentences or meta commentary.
+CRITICAL INSTRUCTIONS:
+1. Analyze the Reddit posts above to find REAL information about ${productName}
+2. DO NOT use placeholder text like "[Feature Name]" - extract actual features, updates, and issues from the posts
+3. Every bullet point must reference specific Reddit discussions with real URLs
+4. If you cannot find enough information for a section, write "Limited data available" or similar
+5. Focus on the most upvoted and discussed topics (higher score = more important)
+6. Extract actual quotes from the title_or_text field when available
+
+Generate the report section for ${productName} now, using ONLY real data from the posts above.
 `;
 }
 
@@ -547,9 +566,32 @@ export async function writeReportV2(
   const sections = await Promise.all(sectionPromises);
 
   // Generate strategic takeaways in a small separate call
-  const takeawaysPrompt = `DATA:\n${JSON.stringify({ products, coverage }, null, 2)}\n\nWrite a concise 'Strategic Takeaways' section (3 bullets) connecting themes across products.`;
+  const takeawaysPrompt = `
+COMPETITIVE LANDSCAPE DATA:
+${JSON.stringify({ 
+  products, 
+  coverage,
+  total_items_analyzed: unified.length,
+  product_mentions: Object.entries(byProduct).map(([name, items]) => ({
+    product: name,
+    mentions: items.length
+  }))
+}, null, 2)}
+
+Generate a "Strategic Takeaways" section with 3 actionable insights:
+1. Identify competitive advantages or gaps based on the data
+2. Suggest strategic opportunities based on user sentiment patterns
+3. Highlight market trends or emerging needs
+
+Format:
+## **💡 Strategic Takeaways**
+• **[Insight Title]**: [2-3 sentences of actionable analysis]
+• **[Insight Title]**: [2-3 sentences of actionable analysis]  
+• **[Insight Title]**: [2-3 sentences of actionable analysis]
+
+Make insights SPECIFIC to the products analyzed, not generic advice.`;
   const takeaways = await callOpenAI([
-    { role: 'system', content: 'You write concise, actionable strategy bullets.' },
+    { role: 'system', content: 'You are a strategic analyst providing actionable competitive intelligence insights.' },
     { role: 'user', content: takeawaysPrompt }
   ], 'takeaways');
 
