@@ -534,13 +534,22 @@ export async function writeReportV2(
     { role: 'user', content: takeawaysPrompt }
   ], 'takeaways');
 
+  // Recommendation section for the founder
+  const recommendationPrompt = `You are advising the founder of ${input.me.name}.\nUse all the sections above (not provided verbatim here) as context: user feedback for ${input.me.name} and competitors (${input.competitors.map(c=>c.name).join(', ')}).\nWrite a final section titled '## **🧭 Recommendations for the Founder**' with 4–6 concrete actions.\nEach action should be 1–2 sentences long and explicitly tie to observed user feedback or competitor gaps. Keep it pragmatic.`;
+  const recommendations = await callOpenAI([
+    { role: 'system', content: 'You provide pragmatic product recommendations.' },
+    { role: 'user', content: recommendationPrompt }
+  ], 'recommendations');
+
   const final = [
     header,
     '## **Competitor Analysis**',
     '',
     sections.join('\n\n---\n\n'),
     '\n---\n',
-    takeaways ? takeaways : '## **💡 Strategic Takeaways**\n• Focus on recurring pain points.\n• Amplify strengths users praise.\n• Track competitor launches closely.'
+    takeaways ? takeaways : '## **💡 Strategic Takeaways**\n• Focus on recurring pain points.\n• Amplify strengths users praise.\n• Track competitor launches closely.',
+    '\n---\n',
+    recommendations ? recommendations : '## **🧭 Recommendations for the Founder**\n1. Prioritize top user pain points in the next sprint.\n2. Double down on differentiators users love and showcase them in onboarding.\n3. Close gaps that repeatedly appear in competitor praise.\n4. Validate pricing concerns in user interviews and experiment with tiers.'
   ].join('\n');
 
   return final;

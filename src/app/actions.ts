@@ -302,11 +302,18 @@ async function runBackgroundJob(
   });
   const { jobId } = await startRes.json();
 
+  let lastLogSent = '';
   for (let i = 0; i < 900; i++) { // 15 minutes max
     await new Promise(r => setTimeout(r, 1000));
     const statusRes = await fetch(`${statusPath}${jobId}`);
     const status = await statusRes.json();
-    if (status.logs) status.logs.forEach((l: string) => onLog(l));
+    if (status.logs && status.logs.length > 0) {
+      const latest = status.logs[status.logs.length - 1];
+      if (latest && latest !== lastLogSent) {
+        onLog(latest);
+        lastLogSent = latest;
+      }
+    }
     if (status.status === 'completed') {
       const res = await fetch(`${resultPath}${jobId}`);
       const data = await res.json();

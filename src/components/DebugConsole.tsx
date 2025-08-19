@@ -33,6 +33,7 @@ interface DebugConsoleProps {
   isOpen: boolean;
   onToggle: () => void;
   isRunning: boolean;
+  subtitle?: string;
 }
 
 const SERVICE_COLORS: Record<string, string> = {
@@ -48,7 +49,8 @@ export default function DebugConsole({
   logs, 
   isOpen, 
   onToggle, 
-  isRunning 
+  isRunning,
+  subtitle
 }: DebugConsoleProps) {
   const theme = useTheme();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,24 @@ export default function DebugConsole({
     return entry;
   };
 
+  // Coalesce repeated messages to reduce visual noise
+  const coalesced = (() => {
+    const out: Array<LogEntry & { count?: number }> = [];
+    const MAX = 80; // cap to latest 80 entries
+    const source = logs.slice(-MAX);
+    for (const raw of source) {
+      const entry = prettify(raw);
+      if (!entry.message) continue;
+      const last = out[out.length - 1];
+      if (last && last.service === entry.service && last.message === entry.message) {
+        last.count = (last.count || 1) + 1;
+      } else {
+        out.push({ ...entry });
+      }
+    }
+    return out;
+  })();
+
   const handleCopy = () => {
     const text = logs
       .map(log => `[${log.timestamp}] [${log.service}] ${log.message}`)
@@ -187,6 +207,11 @@ export default function DebugConsole({
                 · {elapsed}
               </Typography>
             )}
+            {subtitle && (
+              <Typography variant="caption" sx={{ color: '#A8ADB4', ml: 1 }}>
+                · {subtitle}
+              </Typography>
+            )}
             {isRunning && (
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
@@ -248,8 +273,8 @@ export default function DebugConsole({
             }}
           >
             <AnimatePresence initial={false}>
-              {logs.map((raw, index) => {
-                const log = prettify(raw);
+              {coalesced.map((raw, index) => {
+                const log = raw as any;
                 if (!log.message) return null;
                 return (
                 <motion.div
@@ -297,7 +322,7 @@ export default function DebugConsole({
                         wordBreak: 'break-word',
                       }}
                     >
-                      {log.message}
+                      {log.message}{(log as any).count && (log as any).count > 1 ? ` ×${(log as any).count}` : ''}
                     </Typography>
                   </Box>
                 </motion.div>
