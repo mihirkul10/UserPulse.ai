@@ -45,9 +45,19 @@ async function callOpenAI(messages: any[], functionName: string) {
       params.max_completion_tokens = 4000;
     }
     
+    console.log(`[${functionName}] Request params:`, JSON.stringify({
+      model: params.model,
+      max_completion_tokens: params.max_completion_tokens,
+      max_tokens: params.max_tokens,
+      temperature: params.temperature,
+      messageCount: messages.length
+    }));
+    
     const response = await ai.chat.completions.create(params);
     
     const content = response.choices[0]?.message?.content;
+    console.log(`[${functionName}] Response length:`, content?.length || 0);
+    console.log(`[${functionName}] Response preview:`, content?.substring(0, 200) || 'EMPTY');
     
     if (!content) {
       console.error(`[${functionName}] OpenAI returned empty response`);
