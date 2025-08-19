@@ -23,7 +23,7 @@ function getOpenAI() {
 async function callOpenAI(messages: any[], functionName: string) {
   try {
     const ai = getOpenAI();
-    const model = process.env.OPENAI_MODEL || 'gpt-5-nano-2025-08-07';
+    const model = process.env.OPENAI_MODEL || 'gpt-4o';
     
     console.log(`[${functionName}] Calling OpenAI with model: ${model}`);
     
